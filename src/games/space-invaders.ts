@@ -12,15 +12,15 @@ const W = COLS * STEP + PAD_X * 2;
 const H = ROWS * STEP + PAD_Y + 68;
 const SHIP_Y = PAD_Y + ROWS * STEP + 26;
 
-// ─── Fixed 30-second budget ───────────────────────────────────────────────────
-const TOTAL = 30;
-const MARCH = 2.0;
-const TRAVEL = 0.35; // bullet travel time (slow enough to see)
-const FLASH = 0.08; // kill-flash before cell dies
-const SHOT_T = 0.55; // total time per shot (travel + pause before next)
+// ─── Timing constants ────────────────────────────────────────────────────────
+const MARCH = 2.0; // alien march phase before shooting starts
+const TRAVEL = 0.35; // bullet travel time
+const FLASH = 0.08; // kill-flash duration
+const SHOT_T = 0.55; // time per shot (travel + gap before next)
 const COL_GAP = 0.12; // pause between cells
-const BULLET_H = 5; // bullet rect height in px
-const BULLET_W = 2; // bullet rect width in px
+const BULLET_H = 5; // bullet rect height px
+const BULLET_W = 2; // bullet rect width px
+const END_HOLD = 1.5; // pause after last kill before loop restarts
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
 export type ThemeColor = "green" | "blue" | "orange" | "pink" | "yellow";
@@ -98,10 +98,6 @@ function buildDefs(accent: string): string {
 	d += "</defs>\n";
 	return d;
 }
-
-// ─── Percent helper ───────────────────────────────────────────────────────────
-const pct = (t: number) =>
-	((Math.min(t, TOTAL) / TOTAL) * 100).toFixed(2) + "%";
 
 // ─── Main generator ───────────────────────────────────────────────────────────
 export interface InvaderOptions {
@@ -197,7 +193,8 @@ export function generateSpaceInvadersSvg(
 	shipSnaps.push({ x: firstX, t: 0 });
 	shipSnaps.push({ x: firstX, t: MARCH });
 
-	while (t < TOTAL - 0.5) {
+	// No time cap — run until every alien is dead
+	while (true) {
 		const alien = getTarget();
 		if (!alien) break;
 
@@ -246,6 +243,11 @@ export function generateSpaceInvadersSvg(
 
 		t = hitAt + COL_GAP;
 	}
+
+	// TOTAL is the true animation duration: covers every shot + hold before restart
+	const TOTAL = t + END_HOLD;
+	const pct = (v: number) =>
+		((Math.min(v, TOTAL) / TOTAL) * 100).toFixed(2) + "%";
 
 	// Hold ship at final position through end
 	shipSnaps.push({ x: shipSnaps[shipSnaps.length - 1].x, t: TOTAL });
@@ -305,11 +307,16 @@ export function generateSpaceInvadersSvg(
 	const bulletSvg: string[] = [];
 	const bulletCss: string[] = [];
 
+	// Ship barrel tip is at SHIP_Y - 4 (top of ship nose in SVG coords)
+	const BARREL_Y = SHIP_Y - 4;
+
 	for (const s of shots) {
-		const dy = s.targetCY - SHIP_Y; // negative (upward)
+		// dy: distance from barrel tip to target centre (negative = upward)
+		const dy = s.targetCY - BARREL_Y;
 		const bx = s.shipX - BULLET_W / 2;
-		const by = SHIP_Y - BULLET_H; // top of bullet at rest position
-		const p0 = pct(Math.max(0, s.fireAt - 0.005));
+		// Bullet rests at barrel tip; translateY moves it from there
+		const by = BARREL_Y - BULLET_H;
+		const p0 = pct(Math.max(0, s.fireAt - 0.001));
 		const p1 = pct(s.fireAt);
 		const p2 = pct(s.hitAt);
 		const p2b = pct(Math.min(s.hitAt + 0.04, TOTAL));
@@ -321,11 +328,14 @@ export function generateSpaceInvadersSvg(
 		bulletCss.push(
 			`#${s.id}{animation:bm${s.id} ${TOTAL}s linear infinite}` +
 				`@keyframes bm${s.id}{` +
+				// Hidden and at rest position at 0% and just before fire
 				`0%,${p0}{transform:translateY(0);opacity:0}` +
+				// Fires — visible at barrel tip
 				`${p1}{transform:translateY(0);opacity:1}` +
+				// Reaches target
 				`${p2}{transform:translateY(${dy}px);opacity:1}` +
-				`${p2b}{transform:translateY(${dy}px);opacity:0}` +
-				`100%{transform:translateY(${dy}px);opacity:0}}`,
+				// Vanishes at target, then stays gone until loop end
+				`${p2b},100%{transform:translateY(0);opacity:0}}`,
 		);
 	}
 
