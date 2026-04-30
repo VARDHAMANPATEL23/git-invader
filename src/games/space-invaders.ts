@@ -26,18 +26,18 @@ const END_HOLD = 1.5; // pause after last kill before loop restarts
 export type ThemeColor = "green" | "blue" | "orange" | "pink" | "yellow";
 export type ThemeMode = "dark" | "light";
 
-const ACCENT: Record<ThemeColor, string> = {
-	green: "#39d353",
-	blue: "#58A6FF",
-	orange: "#F78166",
-	pink: "#FF79C6",
-	yellow: "#FBBF24",
+const ACCENT: Record<ThemeColor, Record<ThemeMode, string>> = {
+	green: { dark: "#39d353", light: "#216e39" },
+	blue: { dark: "#58A6FF", light: "#0969da" },
+	orange: { dark: "#F78166", light: "#bc4c00" },
+	pink: { dark: "#FF79C6", light: "#bf3989" },
+	yellow: { dark: "#FBBF24", light: "#9a6700" },
 };
-const BG: Record<ThemeMode, string> = { dark: "#0d1117", light: "#f0f6ff" };
+const BG: Record<ThemeMode, string> = { dark: "#0d1117", light: "#ffffff" };
 
 const CELL_BG: Record<ThemeMode, string> = {
 	dark: "#161b22",
-	light: "#eaeef2",
+	light: "#ebedf0",
 };
 
 // ─── Health calculation ───────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ export function generateSpaceInvadersSvg(
 ): string {
 	const color = opts.color ?? "green";
 	const mode = opts.mode ?? "dark";
-	const accent = ACCENT[color];
+	const accent = ACCENT[color][mode];
 	const bg = BG[mode];
 	const dimBg = CELL_BG[mode];
 
@@ -348,8 +348,9 @@ export function generateSpaceInvadersSvg(
 		const p2b = pct(fadeEnd);   // fade out in place
 		const p2c = pct(snapBack);  // snap back off-screen
 
+		const bulletColor = mode === "dark" ? "#ffffff" : "#24292f";
 		bulletSvg.push(
-			`<rect id="${s.id}" x="${bx}" y="${by}" width="${BULLET_W}" height="${BULLET_H}" fill="#ffffff" opacity="0" rx="1"/>`,
+			`<rect id="${s.id}" x="${bx}" y="${by}" width="${BULLET_W}" height="${BULLET_H}" fill="${bulletColor}" opacity="0" rx="1"/>`,
 		);
 
 		bulletCss.push(
