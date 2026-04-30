@@ -76,6 +76,8 @@ const BITMAP: Record<number, number[]> = {
 
 function buildDefs(accent: string): string {
 	let d = "<defs>\n";
+	// Hard clip for bullets — CSS transforms bypass SVG viewport overflow
+	d += `<clipPath id="bulletclip"><rect width="${W}" height="${H}"/></clipPath>\n`;
 	for (const lv of [1, 2, 3, 4]) {
 		let rects = "";
 		BITMAP[lv].forEach((row, r) => {
@@ -119,18 +121,24 @@ export function generateSpaceInvadersSvg(
 
 	// ── Build per-column alien stacks (bottom row = index 0 = frontmost) ─────────
 	// Each entry tracks remaining HP so hits accumulate across visits.
-	type Alien = { col: number; row: number; hp: number; cy: number };
+	type Alien = { col: number; row: number; hp: number; maxHp: number; cy: number };
+
+	// cellMaxHp tracks original HP per cell for opacity stepping
+	const cellMaxHp = new Map<string, number>();
 
 	// columnStack[col] = aliens sorted bottom-first (highest row index first)
 	const columnStack = new Map<number, Alien[]>();
 	for (const c of cells) {
 		const h = getHealth(c.count);
 		if (h === 0) continue;
+		const key = `${c.x}-${c.y}`;
+		cellMaxHp.set(key, h);
 		if (!columnStack.has(c.x)) columnStack.set(c.x, []);
 		columnStack.get(c.x)!.push({
 			col: c.x,
 			row: c.y,
 			hp: h,
+			maxHp: h,
 			cy: PAD_Y + c.y * STEP + CELL / 2,
 		});
 	}
@@ -147,11 +155,13 @@ export function generateSpaceInvadersSvg(
 		hitAt: number;
 		isKill: boolean;
 	};
-	type CellAnim = { killAt: number; hitFlashes: number[] };
+	// hitTimes: ordered list of all hit times (non-kill + kill last)
+	type CellAnim = { killAt: number; hitTimes: number[] };
 
 	const shots: Shot[] = [];
 	const cellAnim = new Map<string, CellAnim>();
-	const cellHitFlashes = new Map<string, number[]>(); // accumulated across visits
+	// accumulated hit times per cell (non-kill hits)
+	const cellHitFlashes = new Map<string, number[]>();
 	const shipSnaps: Array<{ x: number; t: number }> = [];
 
 	let t = MARCH;
@@ -220,16 +230,15 @@ export function generateSpaceInvadersSvg(
 		});
 
 		if (isKill) {
-			// Record kill time for cell fade animation
 			const killAt = hitAt + FLASH;
-			const hf = cellHitFlashes.get(key) ?? [];
-			cellAnim.set(key, { killAt, hitFlashes: hf });
+			const prevHits = cellHitFlashes.get(key) ?? [];
+			cellAnim.set(key, { killAt, hitTimes: prevHits });
 			// Pop this alien — exposes the one behind it in the same column
 			const stack = columnStack.get(alien.col)!;
 			stack.shift();
 			if (stack.length === 0) columnStack.delete(alien.col);
 		} else {
-			// Non-kill hit: record flash time
+			// Non-kill hit: accumulate hit time for opacity stepping
 			if (!cellHitFlashes.has(key)) cellHitFlashes.set(key, []);
 			cellHitFlashes.get(key)!.push(hitAt);
 		}
@@ -247,7 +256,7 @@ export function generateSpaceInvadersSvg(
 	// TOTAL is the true animation duration: covers every shot + hold before restart
 	const TOTAL = t + END_HOLD;
 	const pct = (v: number) =>
-		((Math.min(v, TOTAL) / TOTAL) * 100).toFixed(2) + "%";
+		((Math.min(v, TOTAL) / TOTAL) * 100).toFixed(5) + "%";
 
 	// Hold ship at final position through end
 	shipSnaps.push({ x: shipSnaps[shipSnaps.length - 1].x, t: TOTAL });
@@ -271,14 +280,20 @@ export function generateSpaceInvadersSvg(
 		const cx = PAD_X + c.x * STEP;
 		const cy = PAD_Y + c.y * STEP;
 		const ka = Math.min(anim?.killAt ?? TOTAL * 0.99, TOTAL - 0.01);
-		const hf = anim?.hitFlashes ?? [];
+		const hitTimes = anim?.hitTimes ?? [];
+		const maxHp = cellMaxHp.get(key) ?? 1;
 
-		// Hit flashes: brief dim then recover — no color change
+		// Build opacity keyframes: each hit permanently steps opacity down by 1/maxHp
+		// so high-HP aliens glow at full brightness and dim progressively with damage.
 		let hfCss = "";
-		for (const ht of hf) {
-			const h0 = pct(ht);
-			const h1 = pct(ht + FLASH);
-			hfCss += `${h0}{opacity:.4}${h1}{opacity:1}`;
+		for (let i = 0; i < hitTimes.length; i++) {
+			const ht = hitTimes[i];
+			const opAfter = (maxHp - (i + 1)) / maxHp; // base opacity after this hit
+			hfCss +=
+				// brief flash-dim on impact
+				`${pct(ht)}{opacity:${(opAfter * 0.3).toFixed(2)}}` +
+				// settle at new lower base
+				`${pct(ht + FLASH)}{opacity:${opAfter.toFixed(2)}}`;
 		}
 
 		const fillOpacity = mode === "dark" ? "0.15" : "0.12";
@@ -289,53 +304,69 @@ export function generateSpaceInvadersSvg(
 				`</g>`,
 		);
 
-		// Kill: dim briefly then fade out cleanly — no brightness blow-out
+		// Compute opacity just before the kill flash (last sustained level after all hits)
+		const opBeforeKill = hitTimes.length > 0 ? (1 / maxHp) : 1;
 		cellCss.push(
 			`#${id}{animation:k${id} ${TOTAL}s linear infinite}` +
 				`@keyframes k${id}{` +
 				`0%{opacity:1}` +
 				hfCss +
-				`${pct(ka - FLASH)}{opacity:.3}` +
+				`${pct(ka - FLASH)}{opacity:${(opBeforeKill * 0.3).toFixed(2)}}` +
 				`${pct(ka)}{opacity:0}` +
 				`100%{opacity:0}}`,
 		);
 	}
 
 	// Bullet elements + CSS
-	// Each bullet is a small rect that travels from SHIP_Y up to targetCY.
-	// Animated via translateY — starts at 0 (ship), ends at (targetCY - SHIP_Y).
+	// Each bullet parks BELOW the SVG viewport at rest (y = H + 10).
+	// The SVG clips overflow, so even if opacity glitches the bullet is invisible.
+	// A near-instant snap at fireAt-epsilon brings it to barrel while still opacity:0.
 	const bulletSvg: string[] = [];
 	const bulletCss: string[] = [];
 
-	// Ship barrel tip is at SHIP_Y - 4 (top of ship nose in SVG coords)
+	// Ship barrel tip y position in SVG coords
 	const BARREL_Y = SHIP_Y - 4;
+	// Off-screen parking position (below SVG bottom edge, clipped)
+	const PARK_Y = H + 10;
 
 	for (const s of shots) {
-		// dy: distance from barrel tip to target centre (negative = upward)
-		const dy = s.targetCY - BARREL_Y;
 		const bx = s.shipX - BULLET_W / 2;
-		// Bullet rests at barrel tip; translateY moves it from there
-		const by = BARREL_Y - BULLET_H;
-		const p0 = pct(Math.max(0, s.fireAt - 0.001));
-		const p1 = pct(s.fireAt);
-		const p2 = pct(s.hitAt);
-		const p2b = pct(Math.min(s.hitAt + 0.04, TOTAL));
+		// Bullet rect is placed at PARK_Y (off-screen below)
+		const by = PARK_Y;
+
+		// translateY values relative to PARK_Y base position
+		const dyToBarrel = BARREL_Y - BULLET_H - PARK_Y; // snap up to barrel tip
+		const dyToTarget = s.targetCY - PARK_Y;           // travel to alien centre
+
+		// Keyframe timing
+		const p0  = pct(Math.max(0, s.fireAt - 0.002));   // last "hidden off-screen" frame
+		const p0b = pct(Math.max(0, s.fireAt - 0.001));   // snap to barrel (still invisible)
+		const p1  = pct(s.fireAt);                         // appear at barrel
+		const p2  = pct(s.hitAt);                          // reach target
+		const fadeEnd = Math.min(s.hitAt + 0.04, TOTAL);
+		const snapBack = Math.min(fadeEnd + 0.001, TOTAL);
+		const p2b = pct(fadeEnd);   // fade out in place
+		const p2c = pct(snapBack);  // snap back off-screen
 
 		bulletSvg.push(
-			`<rect id="${s.id}" x="${bx}" y="${by}" width="${BULLET_W}" height="${BULLET_H}" fill="#ffffff" rx="1"/>`,
+			`<rect id="${s.id}" x="${bx}" y="${by}" width="${BULLET_W}" height="${BULLET_H}" fill="#ffffff" opacity="0" rx="1"/>`,
 		);
 
 		bulletCss.push(
 			`#${s.id}{animation:bm${s.id} ${TOTAL}s linear infinite}` +
 				`@keyframes bm${s.id}{` +
-				// Hidden and at rest position at 0% and just before fire
+				// Parked off-screen below viewport — clipped even if opacity glitches
 				`0%,${p0}{transform:translateY(0);opacity:0}` +
-				// Fires — visible at barrel tip
-				`${p1}{transform:translateY(0);opacity:1}` +
-				// Reaches target
-				`${p2}{transform:translateY(${dy}px);opacity:1}` +
-				// Vanishes at target, then stays gone until loop end
-				`${p2b},100%{transform:translateY(0);opacity:0}}`,
+				// Snap to barrel position while still invisible
+				`${p0b}{transform:translateY(${dyToBarrel}px);opacity:0}` +
+				// Appear at barrel and fire
+				`${p1}{transform:translateY(${dyToBarrel}px);opacity:1}` +
+				// Travel up to alien
+				`${p2}{transform:translateY(${dyToTarget}px);opacity:1}` +
+				// Fade out in place (no transform snap = no flash artifact)
+				`${p2b}{transform:translateY(${dyToTarget}px);opacity:0}` +
+				// Snap back off-screen, stay there until loop restarts
+				`${p2c},100%{transform:translateY(0);opacity:0}}`,
 		);
 	}
 
@@ -387,9 +418,11 @@ export function generateSpaceInvadersSvg(
 		hud,
 		gridBg,
 		`<g id="marchg">${cellSvg.join("")}</g>`,
-		bulletSvg.join(""),
+		`<g clip-path="url(#bulletclip)">${bulletSvg.join("")}</g>`,
 		ground,
-		`<g id="shipg"><use href="#ship" width="12" height="10"/></g>`,
+		// x="-6" shifts the use element left so the ship's visual center (symbol x=0)
+		// aligns with the group origin, matching the bullet's x position.
+		`<g id="shipg"><use href="#ship" x="-6" width="12" height="10"/></g>`,
 		scanOverlay,
 		`</svg>`,
 	].join("\n");
