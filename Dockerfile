@@ -7,4 +7,4 @@ RUN bun install
 COPY tsconfig.json ./
 COPY src/ ./src/
 
-ENTRYPOINT ["bun", "src/index.ts"]
+ENTRYPOINT ["bun", "/app/src/index.ts"]
