@@ -25,9 +25,3 @@ inputs:
 runs:
     using: docker
     image: Dockerfile
-    env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
-        GI_USERNAME: ${{ inputs.github_username }}
-        GI_OUT: ${{ inputs.output_dir }}
-        GI_COLOR: ${{ inputs.color }}
-        GI_MODE: ${{ inputs.mode }}

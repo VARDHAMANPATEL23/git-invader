@@ -18,11 +18,8 @@ const VALID_MODES: ThemeMode[] = ["dark", "light"];
 
 function usage(): never {
 	console.error(`
-Usage:
+Usage (CLI):
   bun src/index.ts --token <TOKEN> --username <USER> [--out ./dist] [--color green] [--mode dark]
-
-Or via environment variables (used when running as a GitHub Action):
-  GITHUB_TOKEN, GI_USERNAME, GI_OUT, GI_COLOR, GI_MODE
 
 Colors: ${VALID_COLORS.join(" | ")}
 Modes:  ${VALID_MODES.join(" | ")}
@@ -30,25 +27,32 @@ Modes:  ${VALID_MODES.join(" | ")}
 	process.exit(1);
 }
 
-function parseArgs() {
+function getInput(cliFlag: string, inputName: string, fallback = ""): string {
+	// 1. CLI flag (local use)
 	const args = process.argv.slice(2);
-	const flag = (name: string) => {
-		const i = args.indexOf(name);
-		return i !== -1 ? args[i + 1] : undefined;
-	};
+	const i = args.indexOf(cliFlag);
+	if (i !== -1 && args[i + 1]) return args[i + 1];
 
-	// CLI flags take priority; fall back to env vars set by action.yml
-	const token = flag("--token") ?? process.env.GITHUB_TOKEN ?? "";
-	const username =
-		flag("--username") ??
-		process.env.GI_USERNAME ??
-		process.env.GITHUB_REPOSITORY_OWNER ??
-		"";
-	const outDir = flag("--out") ?? process.env.GI_OUT ?? "./dist";
+	// 2. INPUT_* env var (GitHub Actions injects these automatically for every input)
+	const envKey = `INPUT_${inputName.toUpperCase().replace(/ /g, "_")}`;
+	const fromEnv = process.env[envKey] ?? "";
+	if (fromEnv.trim()) return fromEnv.trim();
 
-	// Treat blank string (what action.yml sends when input is empty) as undefined
-	const rawColor = (flag("--color") ?? process.env.GI_COLOR ?? "").trim();
-	const rawMode = (flag("--mode") ?? process.env.GI_MODE ?? "").trim();
+	// 3. Fallback env vars for common cases
+	if (inputName === "GITHUB_TOKEN")
+		return process.env.GITHUB_TOKEN ?? fallback;
+	if (inputName === "GITHUB_USERNAME")
+		return process.env.GITHUB_REPOSITORY_OWNER ?? fallback;
+
+	return fallback;
+}
+
+function parseArgs() {
+	const token = getInput("--token", "GITHUB_TOKEN");
+	const username = getInput("--username", "GITHUB_USERNAME");
+	const outDir = getInput("--out", "OUTPUT_DIR", "dist");
+	const rawColor = getInput("--color", "COLOR").trim();
+	const rawMode = getInput("--mode", "MODE").trim();
 
 	const color = VALID_COLORS.includes(rawColor as ThemeColor)
 		? (rawColor as ThemeColor)
@@ -58,27 +62,31 @@ function parseArgs() {
 		: undefined;
 
 	if (rawColor && !color) {
-		console.error(
-			`Invalid --color "${rawColor}". Valid values: ${VALID_COLORS.join(", ")}`,
-		);
+		console.error(`Invalid color "${rawColor}"`);
 		usage();
 	}
 	if (rawMode && !mode) {
-		console.error(
-			`Invalid --mode "${rawMode}". Valid values: ${VALID_MODES.join(", ")}`,
-		);
+		console.error(`Invalid mode "${rawMode}"`);
 		usage();
 	}
 	if (!token) {
-		console.error("Missing --token / GITHUB_TOKEN");
+		console.error("Missing token");
 		usage();
 	}
 	if (!username) {
-		console.error("Missing --username / GI_USERNAME");
+		console.error("Missing username");
 		usage();
 	}
 
-	return { token, username, outDir, color, mode };
+	// When running inside the GitHub Actions Docker container the workspace is
+	// mounted at /github/workspace. Relative paths must be resolved from there,
+	// not from /app (the container WORKDIR).
+	const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
+	const resolvedOut = path.isAbsolute(outDir)
+		? outDir
+		: path.join(workspace, outDir);
+
+	return { token, username, outDir: resolvedOut, color, mode };
 }
 
 async function main() {
