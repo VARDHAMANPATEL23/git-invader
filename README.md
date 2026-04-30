@@ -1,9 +1,13 @@
-# git-invader
+# contrib-arcade (git-invader)
 
-Generates a Space Invaders SVG animation from your GitHub contribution graph.
-Each contribution cell becomes an alien. The ship fires one bullet per move,
-waits for it to land, then picks the next target. Aliens in the bottom row
-(closest to the ship) are targeted first. High-contribution days take more hits.
+Generates a dynamic retro arcade SVG animation from your GitHub contribution graph. 
+Currently features **Space Invaders**, where your contribution grid transforms into an alien armada!
+
+### Features:
+- **Smart Targeting**: The spaceship dynamically seeks and fires at the lowest-hanging aliens first to avoid shooting through "living" units.
+- **Dynamic Health**: Alien HP is proportional to your daily commit count. High-volume committers see stronger aliens requiring multiple hits.
+- **Adaptive Themes**: Beautifully tuned neon colors for Dark Mode, and distinct, high-contrast readable shades for Light Mode (matching GitHub's native style).
+- **Pure CSS/SVG**: No JavaScript. Runs flawlessly when embedded in your GitHub Profile README.
 
 ---
 
@@ -87,7 +91,8 @@ Dark/light auto-switch:
 | `mode`       | `dark` `light`                          | both    |
 | `output_dir` | any path                                | `dist`  |
 
-Leave `color` or `mode` blank to generate all variants at once.
+Leave `color` or `mode` blank to generate all variants at once. 
+*Note: Dark and Light modes use distinct hex color palettes to ensure perfect readability and contrast.*
 
 ---
 
