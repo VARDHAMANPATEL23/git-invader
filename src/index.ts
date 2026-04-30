@@ -1,55 +1,113 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fetchContributions } from "./api/github";
-import { generateSpaceInvadersSvg } from "./games/space-invaders";
+import {
+	generateSpaceInvadersSvg,
+	ThemeColor,
+	ThemeMode,
+} from "./games/space-invaders";
+
+const VALID_COLORS: ThemeColor[] = [
+	"green",
+	"blue",
+	"orange",
+	"pink",
+	"yellow",
+];
+const VALID_MODES: ThemeMode[] = ["dark", "light"];
 
 function usage(): never {
-  console.error(`
+	console.error(`
 Usage:
-  ts-node src/index.ts --token <GITHUB_TOKEN> --username <USERNAME> [--out ./dist]
+  bun src/index.ts --token <TOKEN> --username <USER> [--out ./dist] [--color green] [--mode dark]
 
-Environment variables (fallbacks):
-  GITHUB_TOKEN
-  GITHUB_REPOSITORY_OWNER
+Or via environment variables (used when running as a GitHub Action):
+  GITHUB_TOKEN, GI_USERNAME, GI_OUT, GI_COLOR, GI_MODE
+
+Colors: ${VALID_COLORS.join(" | ")}
+Modes:  ${VALID_MODES.join(" | ")}
 `);
-  process.exit(1);
+	process.exit(1);
 }
 
-function parseArgs(): { token: string; username: string; outDir: string } {
-  const args = process.argv.slice(2);
-  const get = (flag: string) => {
-    const i = args.indexOf(flag);
-    return i !== -1 ? args[i + 1] : undefined;
-  };
+function parseArgs() {
+	const args = process.argv.slice(2);
+	const flag = (name: string) => {
+		const i = args.indexOf(name);
+		return i !== -1 ? args[i + 1] : undefined;
+	};
 
-  const token    = get("--token")    ?? process.env.GITHUB_TOKEN ?? "";
-  const username = get("--username") ?? process.env.GITHUB_REPOSITORY_OWNER ?? "";
-  const outDir   = get("--out")      ?? "./dist";
+	// CLI flags take priority; fall back to env vars set by action.yml
+	const token = flag("--token") ?? process.env.GITHUB_TOKEN ?? "";
+	const username =
+		flag("--username") ??
+		process.env.GI_USERNAME ??
+		process.env.GITHUB_REPOSITORY_OWNER ??
+		"";
+	const outDir = flag("--out") ?? process.env.GI_OUT ?? "./dist";
 
-  if (!token)    { console.error("Missing --token"); usage(); }
-  if (!username) { console.error("Missing --username"); usage(); }
+	// Treat blank string (what action.yml sends when input is empty) as undefined
+	const rawColor = (flag("--color") ?? process.env.GI_COLOR ?? "").trim();
+	const rawMode = (flag("--mode") ?? process.env.GI_MODE ?? "").trim();
 
-  return { token, username, outDir };
+	const color = VALID_COLORS.includes(rawColor as ThemeColor)
+		? (rawColor as ThemeColor)
+		: undefined;
+	const mode = VALID_MODES.includes(rawMode as ThemeMode)
+		? (rawMode as ThemeMode)
+		: undefined;
+
+	if (rawColor && !color) {
+		console.error(
+			`Invalid --color "${rawColor}". Valid values: ${VALID_COLORS.join(", ")}`,
+		);
+		usage();
+	}
+	if (rawMode && !mode) {
+		console.error(
+			`Invalid --mode "${rawMode}". Valid values: ${VALID_MODES.join(", ")}`,
+		);
+		usage();
+	}
+	if (!token) {
+		console.error("Missing --token / GITHUB_TOKEN");
+		usage();
+	}
+	if (!username) {
+		console.error("Missing --username / GI_USERNAME");
+		usage();
+	}
+
+	return { token, username, outDir, color, mode };
 }
 
 async function main() {
-  const { token, username, outDir } = parseArgs();
+	const { token, username, outDir, color, mode } = parseArgs();
 
-  console.log(`Fetching contributions for ${username}...`);
-  const data = await fetchContributions(username, token);
-  console.log(`Total contributions: ${data.totalCount}`);
-  console.log(`Cells: ${data.cells.length}`);
+	console.log(`Fetching contributions for ${username}...`);
+	const data = await fetchContributions(username, token);
+	console.log(
+		`Total contributions: ${data.totalCount}, cells: ${data.cells.length}`,
+	);
 
-  fs.mkdirSync(outDir, { recursive: true });
+	fs.mkdirSync(outDir, { recursive: true });
 
-  console.log("Generating Space Invaders SVG...");
-  const svg = generateSpaceInvadersSvg(data);
-  const outPath = path.join(outDir, "contrib-space-invaders-dark.svg");
-  fs.writeFileSync(outPath, svg, "utf-8");
-  console.log(`Written: ${outPath}`);
+	const colors = color ? [color] : VALID_COLORS;
+	const modes = mode ? [mode] : VALID_MODES;
+
+	for (const c of colors) {
+		for (const m of modes) {
+			const svg = generateSpaceInvadersSvg(data, { color: c, mode: m });
+			const name = `git-invader-${c}-${m}.svg`;
+			fs.writeFileSync(path.join(outDir, name), svg, "utf-8");
+			console.log(
+				`  Written: ${name} (${(svg.length / 1024).toFixed(1)} KB)`,
+			);
+		}
+	}
 }
 
 main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+	console.error(err);
+	process.exit(1);
 });

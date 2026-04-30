@@ -1,0 +1,33 @@
+name: git-invader
+description: Generate a Space Invaders SVG animation from your GitHub contribution graph
+author: rajdpatel
+
+inputs:
+    github_token:
+        description: GitHub token with repo read access
+        required: true
+    github_username:
+        description: GitHub username to fetch contributions for
+        required: true
+    output_dir:
+        description: Directory to write SVG files into
+        required: false
+        default: dist
+    color:
+        description: "Accent color: green | blue | orange | pink | yellow  (leave blank for all)"
+        required: false
+        default: ""
+    mode:
+        description: "Theme mode: dark | light  (leave blank for both)"
+        required: false
+        default: ""
+
+runs:
+    using: docker
+    image: Dockerfile
+    env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GI_USERNAME: ${{ inputs.github_username }}
+        GI_OUT: ${{ inputs.output_dir }}
+        GI_COLOR: ${{ inputs.color }}
+        GI_MODE: ${{ inputs.mode }}
