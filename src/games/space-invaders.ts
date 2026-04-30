@@ -326,27 +326,20 @@ export function generateSpaceInvadersSvg(
 
 	// Ship barrel tip y position in SVG coords
 	const BARREL_Y = SHIP_Y - 4;
-	// Off-screen parking position (below SVG bottom edge, clipped)
-	const PARK_Y = H + 10;
 
 	for (const s of shots) {
 		const bx = s.shipX - BULLET_W / 2;
-		// Bullet rect is placed at PARK_Y (off-screen below)
-		const by = PARK_Y;
+		// Bullet rect is placed perfectly at the firing position
+		const by = BARREL_Y;
 
-		// translateY values relative to PARK_Y base position
-		const dyToBarrel = BARREL_Y - BULLET_H - PARK_Y; // snap up to barrel tip
-		const dyToTarget = s.targetCY - PARK_Y;           // travel to alien centre
+		// translateY value travels to the alien centre
+		const dyToTarget = s.targetCY - BARREL_Y;
 
 		// Keyframe timing
-		const p0  = pct(Math.max(0, s.fireAt - 0.002));   // last "hidden off-screen" frame
-		const p0b = pct(Math.max(0, s.fireAt - 0.001));   // snap to barrel (still invisible)
-		const p1  = pct(s.fireAt);                         // appear at barrel
-		const p2  = pct(s.hitAt);                          // reach target
-		const fadeEnd = Math.min(s.hitAt + 0.04, TOTAL);
-		const snapBack = Math.min(fadeEnd + 0.001, TOTAL);
-		const p2b = pct(fadeEnd);   // fade out in place
-		const p2c = pct(snapBack);  // snap back off-screen
+		const pWait = pct(Math.max(0, s.fireAt - 0.001)); 
+		const pFire = pct(s.fireAt);                       
+		const pHit  = pct(s.hitAt);                        
+		const pDone = pct(Math.min(s.hitAt + 0.001, TOTAL));
 
 		const bulletColor = mode === "dark" ? "#ffffff" : "#24292f";
 		bulletSvg.push(
@@ -356,18 +349,14 @@ export function generateSpaceInvadersSvg(
 		bulletCss.push(
 			`#${s.id}{animation:bm${s.id} ${TOTAL}s linear infinite}` +
 				`@keyframes bm${s.id}{` +
-				// Parked off-screen below viewport — clipped even if opacity glitches
-				`0%,${p0}{transform:translateY(0);opacity:0}` +
-				// Snap to barrel position while still invisible
-				`${p0b}{transform:translateY(${dyToBarrel}px);opacity:0}` +
-				// Appear at barrel and fire
-				`${p1}{transform:translateY(${dyToBarrel}px);opacity:1}` +
-				// Travel up to alien
-				`${p2}{transform:translateY(${dyToTarget}px);opacity:1}` +
-				// Fade out in place (no transform snap = no flash artifact)
-				`${p2b}{transform:translateY(${dyToTarget}px);opacity:0}` +
-				// Snap back off-screen, stay there until loop restarts
-				`${p2c},100%{transform:translateY(0);opacity:0}}`,
+				// Wait invisibly at the firing position
+				`0%,${pWait}{transform:translateY(0);opacity:0}` +
+				// Appear at the barrel
+				`${pFire}{transform:translateY(0);opacity:1}` +
+				// Travel up to the alien
+				`${pHit}{transform:translateY(${dyToTarget}px);opacity:1}` +
+				// Disappear on hit and stay there until loop restarts
+				`${pDone},100%{transform:translateY(${dyToTarget}px);opacity:0}}`,
 		);
 	}
 
