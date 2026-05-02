@@ -8,7 +8,8 @@ Every contribution cell becomes an alien. The ship hunts them down — column by
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/runtime-bun-FBF0DF?style=flat-square&logo=bun)](https://bun.sh/)
-[![GitHub Action](https://img.shields.io/badge/GitHub_Action-docker-2088FF?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![GitHub Action](https://img.shields.io/badge/GitHub_Action-docker-2088FF?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/VARDHAMANPATEL23/git-invader)
+[![Release](https://img.shields.io/badge/release-v1.0.0-brightgreen?style=flat-square)](https://github.com/VARDHAMANPATEL23/git-invader/releases/tag/v1.0.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 ---
@@ -138,7 +139,7 @@ jobs:
             - uses: actions/checkout@v4
 
             - name: Generate SVG
-              uses: VARDHAMANPATEL23/git-invader@main
+              uses: VARDHAMANPATEL23/git-invader@v1.0.0
               with:
                   github_token: ${{ secrets.GITHUB_TOKEN }}
                   github_username: ${{ github.repository_owner }}

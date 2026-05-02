@@ -23,7 +23,7 @@ jobs:
             - uses: actions/checkout@v4
 
             - name: Generate SVG
-              uses: YOUR_USERNAME/git-invader@main
+              uses: VARDHAMANPATEL23/git-invader@v1.0.1
               with:
                   github_token: ${{ secrets.GITHUB_TOKEN }}
                   github_username: ${{ github.repository_owner }}
