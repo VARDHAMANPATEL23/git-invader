@@ -23,7 +23,13 @@ const BULLET_W = 2; // bullet rect width px
 const END_HOLD = 1.5; // pause after last kill before loop restarts
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
-export type ThemeColor = "green" | "blue" | "orange" | "pink" | "yellow";
+export type ThemeColor =
+	| "green"
+	| "blue"
+	| "orange"
+	| "pink"
+	| "yellow"
+	| "multi";
 export type ThemeMode = "dark" | "light";
 
 const ACCENT: Record<ThemeColor, Record<ThemeMode, string>> = {
@@ -32,6 +38,7 @@ const ACCENT: Record<ThemeColor, Record<ThemeMode, string>> = {
 	orange: { dark: "#F78166", light: "#bc4c00" },
 	pink: { dark: "#FF79C6", light: "#bf3989" },
 	yellow: { dark: "#FBBF24", light: "#9a6700" },
+	multi: { dark: "#39d353", light: "#216e39" }, // fallback, unused when color=="multi"
 };
 const BG: Record<ThemeMode, string> = { dark: "#0d1117", light: "#ffffff" };
 
@@ -55,24 +62,88 @@ function getHealth(count: number): number {
 }
 
 // ─── Alien symbols ────────────────────────────────────────────────────────────
+// 11 cols × 8 rows. Bit 10 (MSB) = col 0 (left), bit 0 (LSB) = col 10 (right).
+// All designs are left-right symmetric. Row 7 always empty.
 const BITMAP: Record<number, number[]> = {
+	// Squid — narrow body, twin antennae, alternating belly
 	1: [
-		0b00100000100, 0b00111111100, 0b01101110110, 0b11111111111,
-		0b10111111101, 0b10100000101, 0b00011011000, 0b00000000000,
+		0b00100000100, // . . X . . . . . X . .
+		0b00010001000, // . . . X . . . X . . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11011111011, // X X . X X X X X . X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01010101010, // . X . X . X . X . X .
+		0b10001010001, // X . . . X . X . . . X
+		0b00000000000,
 	],
+	// Crab — wide claws, bumpy shoulders, splayed legs
 	2: [
-		0b00010001000, 0b10111111101, 0b11101110111, 0b11111111111,
-		0b01111111110, 0b00100000100, 0b01000000010, 0b00000000000,
+		0b01000000010, // . X . . . . . . . X .
+		0b00101110100, // . . X . X X X . X . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11010101011, // X X . X . X . X . X X
+		0b11111111111, // X X X X X X X X X X X
+		0b10110101101, // X . X X . X . X X . X
+		0b10000000001, // X . . . . . . . . . X
+		0b00000000000,
 	],
+	// Octopus — round dome, eye row, three dangling legs
 	3: [
-		0b01111111110, 0b11011111011, 0b11111111111, 0b01011111010,
-		0b00110110011, 0b11000000011, 0b00110110011, 0b00000000000,
+		0b00111111100, // . . X X X X X X X . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11010101011, // X X . X . X . X . X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01101110110, // . X X . X X X . X X .
+		0b00100100100, // . . X . . X . . X . .
+		0b01000000010, // . X . . . . . . . X .
+		0b00000000000,
 	],
+	// Spider — 4-point spike crown, wide shoulders, spread legs
 	4: [
-		0b11111111111, 0b10111111101, 0b11011001011, 0b11111111111,
-		0b01110110111, 0b10001100001, 0b01110110111, 0b00000000000,
+		0b10010001001, // X . . X . . . X . . X
+		0b01001010010, // . X . . X . X . . X .
+		0b00111111100, // . . X X X X X X X . .
+		0b11101110111, // X X X . X X X . X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b10101110101, // X . X . X X X . X . X
+		0b10010001001, // X . . X . . . X . . X
+		0b00000000000,
 	],
 };
+
+// ─── Commit-count color scale ─────────────────────────────────────────────────
+// Interpolates through: blue → green → yellow → orange → red
+// based on the raw commit count relative to a soft maximum.
+function commitCountColor(count: number, mode: ThemeMode): string {
+	if (count === 0) return mode === "dark" ? "#58A6FF" : "#0969da";
+	// Soft cap: counts above 20 are treated as max
+	const t = Math.min(count / 20, 1);
+	// Dark stops: bright, saturated — readable on #0d1117
+	const darkStops = [
+		[0x58, 0xa6, 0xff], // blue
+		[0x26, 0xd9, 0xb8], // cyan
+		[0x39, 0xd3, 0x53], // green
+		[0xfb, 0xbf, 0x24], // yellow
+		[0xff, 0x3b, 0x30], // red
+	];
+	// Light stops: darker, higher-contrast — readable on #ffffff
+	const lightStops = [
+		[0x09, 0x69, 0xda], // blue
+		[0x00, 0x7a, 0x6e], // teal
+		[0x1a, 0x7f, 0x37], // green
+		[0x9a, 0x67, 0x00], // amber
+		[0xcf, 0x22, 0x2e], // red
+	];
+	const stops = mode === "dark" ? darkStops : lightStops;
+	const seg = (stops.length - 1) * t;
+	const lo = Math.floor(seg);
+	const hi = Math.min(lo + 1, stops.length - 1);
+	const f = seg - lo;
+	const r = Math.round(stops[lo][0] + (stops[hi][0] - stops[lo][0]) * f);
+	const g = Math.round(stops[lo][1] + (stops[hi][1] - stops[lo][1]) * f);
+	const b = Math.round(stops[lo][2] + (stops[hi][2] - stops[lo][2]) * f);
+	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
 
 function buildDefs(accent: string): string {
 	let d = "<defs>\n";
@@ -83,7 +154,7 @@ function buildDefs(accent: string): string {
 		BITMAP[lv].forEach((row, r) => {
 			for (let c = 0; c < 11; c++) {
 				if (row & (1 << (10 - c)))
-					rects += `<rect x="${c}" y="${r}" width="1" height="1" fill="${accent}"/>`;
+					rects += `<rect x="${c}" y="${r}" width="1" height="1" fill="currentColor"/>`;
 			}
 		});
 		d += `<symbol id="a${lv}" viewBox="0 0 11 8" preserveAspectRatio="xMidYMid meet">${rects}</symbol>\n`;
@@ -113,7 +184,8 @@ export function generateSpaceInvadersSvg(
 ): string {
 	const color = opts.color ?? "green";
 	const mode = opts.mode ?? "dark";
-	const accent = ACCENT[color][mode];
+	const accentColor: ThemeColor = color === "multi" ? "green" : color;
+	const accent = ACCENT[accentColor][mode];
 	const bg = BG[mode];
 	const dimBg = CELL_BG[mode];
 
@@ -121,7 +193,13 @@ export function generateSpaceInvadersSvg(
 
 	// ── Build per-column alien stacks (bottom row = index 0 = frontmost) ─────────
 	// Each entry tracks remaining HP so hits accumulate across visits.
-	type Alien = { col: number; row: number; hp: number; maxHp: number; cy: number };
+	type Alien = {
+		col: number;
+		row: number;
+		hp: number;
+		maxHp: number;
+		cy: number;
+	};
 
 	// cellMaxHp tracks original HP per cell for opacity stepping
 	const cellMaxHp = new Map<string, number>();
@@ -296,16 +374,18 @@ export function generateSpaceInvadersSvg(
 				`${pct(ht + FLASH)}{opacity:${opAfter.toFixed(2)}}`;
 		}
 
+		const alienColor =
+			color === "multi" ? commitCountColor(c.count, mode) : accent;
 		const fillOpacity = mode === "dark" ? "0.15" : "0.12";
 		cellSvg.push(
-			`<g id="${id}">` +
-				`<rect x="${cx}" y="${cy}" width="${CELL}" height="${CELL}" fill="${accent}" opacity="${fillOpacity}" rx="1"/>` +
+			`<g id="${id}" color="${alienColor}">` +
+				`<rect x="${cx}" y="${cy}" width="${CELL}" height="${CELL}" fill="${alienColor}" opacity="${fillOpacity}" rx="1"/>` +
 				`<use href="#a${c.level}" x="${cx}" y="${cy}" width="${CELL}" height="${CELL}"/>` +
 				`</g>`,
 		);
 
 		// Compute opacity just before the kill flash (last sustained level after all hits)
-		const opBeforeKill = hitTimes.length > 0 ? (1 / maxHp) : 1;
+		const opBeforeKill = hitTimes.length > 0 ? 1 / maxHp : 1;
 		cellCss.push(
 			`#${id}{animation:k${id} ${TOTAL}s linear infinite}` +
 				`@keyframes k${id}{` +
@@ -336,9 +416,9 @@ export function generateSpaceInvadersSvg(
 		const dyToTarget = s.targetCY - BARREL_Y;
 
 		// Keyframe timing
-		const pWait = pct(Math.max(0, s.fireAt - 0.001)); 
-		const pFire = pct(s.fireAt);                       
-		const pHit  = pct(s.hitAt);                        
+		const pWait = pct(Math.max(0, s.fireAt - 0.001));
+		const pFire = pct(s.fireAt);
+		const pHit = pct(s.hitAt);
 		const pDone = pct(Math.min(s.hitAt + 0.001, TOTAL));
 
 		const bulletColor = mode === "dark" ? "#ffffff" : "#24292f";
@@ -384,11 +464,11 @@ export function generateSpaceInvadersSvg(
 		`@keyframes scanf{0%{opacity:.04}50%{opacity:.08}100%{opacity:.04}}`;
 
 	// HUD
-	const score = totalCount.toString().padStart(6, "0");
+	const hudAttr = `font-size="8" font-family="monospace" font-weight="bold" letter-spacing="1"`;
+	const commits = totalCount.toString();
 	const hud =
-		`<text x="${PAD_X}" y="20" fill="${accent}" font-size="8" font-family="monospace" font-weight="bold" letter-spacing="1">SCORE: ${score}</text>` +
-		`<text x="${W / 2}" y="20" fill="${accent}" font-size="8" font-family="monospace" font-weight="bold" letter-spacing="1" text-anchor="middle">CONTRIB-ARCADE</text>` +
-		`<text x="${W - PAD_X}" y="20" fill="${accent}" font-size="8" font-family="monospace" font-weight="bold" letter-spacing="1" text-anchor="end">HI: ${score}</text>`;
+		`<text x="${W / 2}" y="20" fill="${accent}" ${hudAttr} text-anchor="middle">GIT-INVADERS</text>` +
+		`<text x="${W - PAD_X}" y="20" fill="${accent}" ${hudAttr} text-anchor="end">COMMITS: ${commits}</text>`;
 
 	// Ground line
 	const ground = `<line x1="${PAD_X}" y1="${SHIP_Y + 14}" x2="${W - PAD_X}" y2="${SHIP_Y + 14}" stroke="${accent}" stroke-width="1" opacity=".5"/>`;
