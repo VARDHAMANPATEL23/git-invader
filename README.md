@@ -14,15 +14,23 @@ Every contribution cell becomes an alien. The ship hunts them down — column by
 
 ---
 
-<!-- EXAMPLE — replace USERNAME with your own -->
-<picture>
-  <source media="(prefers-color-scheme: dark)"
-    srcset="https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-dark.svg" />
-  <source media="(prefers-color-scheme: light)"
-    srcset="https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-light.svg" />
-  <img alt="git-invader preview"
-    src="https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-dark.svg" />
-</picture>
+### Dark theme
+
+![multi-dark](examples/space-invaders-multi-dark.svg)
+![green-dark](examples/space-invaders-green-dark.svg)
+![blue-dark](examples/space-invaders-blue-dark.svg)
+![orange-dark](examples/space-invaders-orange-dark.svg)
+![pink-dark](examples/space-invaders-pink-dark.svg)
+![yellow-dark](examples/space-invaders-yellow-dark.svg)
+
+### Light theme
+
+![multi-light](examples/space-invaders-multi-light.svg)
+![green-light](examples/space-invaders-green-light.svg)
+![blue-light](examples/space-invaders-blue-light.svg)
+![orange-light](examples/space-invaders-orange-light.svg)
+![pink-light](examples/space-invaders-pink-light.svg)
+![yellow-light](examples/space-invaders-yellow-light.svg)
 
 </div>
 
