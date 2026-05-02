@@ -1,64 +1,82 @@
-# contrib-arcade (git-invader)
+# git-invaders
 
-Generates a dynamic retro arcade SVG animation from your GitHub contribution graph. 
-Currently features **Space Invaders**, where your contribution grid transforms into an alien armada!
-
-### Features:
-- **Smart Targeting**: The spaceship dynamically seeks and fires at the lowest-hanging aliens first to avoid shooting through "living" units.
-- **Dynamic Health**: Alien HP is proportional to your daily commit count. High-volume committers see stronger aliens requiring multiple hits.
-- **Adaptive Themes**: Beautifully tuned neon colors for Dark Mode, and distinct, high-contrast readable shades for Light Mode (matching GitHub's native style).
-- **Pure CSS/SVG**: No JavaScript. Runs flawlessly when embedded in your GitHub Profile README.
+Generates a dynamic retro arcade SVG animation from your GitHub contribution graph.
+Your contribution grid transforms into an alien armada — the ship hunts them down one by one.
 
 ---
 
-## Setup for your GitHub profile
+## Features
 
-Your profile repo is the one named exactly the same as your username:
-`github.com/USERNAME/USERNAME`
+- **Smart targeting** — the ship shoots the lowest-row alien first, column by column, never firing through living units
+- **Dynamic HP** — alien health scales with your daily commit count; high-volume days take multiple hits to kill
+- **4 alien types** — squid, crab, octopus, spider; type is determined by contribution level (1–4)
+- **Multi-color mode** — each alien colored individually by commit count: blue (low) → green → yellow → red (high)
+- **Dark + light themes** — distinct palettes for both, tuned for GitHub's native contrast on each background
+- **Pure SVG/CSS** — no JavaScript, embeds directly in any GitHub README
 
-### Step 1 — Push this repo to GitHub (public)
+---
 
-The action runs from this repo directly. It must be public so other repos can
-reference it.
+## Color modes
+
+| `color` value | Description                                                         |
+| ------------- | ------------------------------------------------------------------- |
+| `green`       | Single neon green accent                                            |
+| `blue`        | Single blue accent                                                  |
+| `orange`      | Single orange accent                                                |
+| `pink`        | Single pink accent                                                  |
+| `yellow`      | Single yellow accent                                                |
+| `multi`       | Per-alien color based on commit count — blue → green → yellow → red |
+
+Leave `color` blank to generate all 6 variants. Leave `mode` blank to generate both `dark` and `light`.
+
+---
+
+## Setup
+
+### 1. Fork or copy this repo
+
+This repo must be public so your profile repo can reference it as a GitHub Action.
 
 ```
-github.com/YOUR_USERNAME/git-invader   (public)
+github.com/YOUR_USERNAME/git-invader   (must be public)
 ```
 
-### Step 2 — Add the workflow to your profile repo
+### 2. Add the workflow to your profile repo
 
-Copy `examples/git-invader.yml` from this repo into your profile repo at:
+Your profile repo is `github.com/USERNAME/USERNAME`. Copy the example workflow into it:
 
 ```
 .github/workflows/git-invader.yml
 ```
 
-Open it and replace `YOUR_GITHUB_USERNAME` with your actual username:
+Use the template below or copy from `examples/git-invader.yml` in this repo.
 
-```yaml
-- name: Generate SVG
-  uses: YOUR_GITHUB_USERNAME/git-invader@main # <-- change this
-```
-
-### Step 3 — Run it
+### 3. Run it
 
 Go to your profile repo → **Actions** → **git-invader** → **Run workflow**.
 
-After it finishes, the SVG is on the `output` branch. The URL is:
+After it finishes, the SVGs are pushed to the `output` branch. The URL pattern is:
+
+```
+https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-{color}-{mode}.svg
+```
+
+For example:
 
 ```
 https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-green-dark.svg
+https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-dark.svg
 ```
 
-### Step 4 — Add to your profile README
+### 4. Embed in your profile README
 
-Basic embed:
+Single image:
 
 ```markdown
-![git-invader](https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-green-dark.svg)
+![git-invaders](https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-green-dark.svg)
 ```
 
-Dark/light auto-switch:
+Auto dark/light switch:
 
 ```html
 <picture>
@@ -75,37 +93,107 @@ Dark/light auto-switch:
 		"
 	/>
 	<img
-		alt="git-invader"
+		alt="git-invaders"
 		src="https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-green-dark.svg"
+	/>
+</picture>
+```
+
+Multi-color with auto dark/light:
+
+```html
+<picture>
+	<source
+		media="(prefers-color-scheme: dark)"
+		srcset="
+			https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-dark.svg
+		"
+	/>
+	<source
+		media="(prefers-color-scheme: light)"
+		srcset="
+			https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-light.svg
+		"
+	/>
+	<img
+		alt="git-invaders"
+		src="https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-multi-dark.svg"
 	/>
 </picture>
 ```
 
 ---
 
-## Options
+## Workflow template
 
-| Input        | Values                                  | Default |
-| ------------ | --------------------------------------- | ------- |
-| `color`      | `green` `blue` `orange` `pink` `yellow` | all 5   |
-| `mode`       | `dark` `light`                          | both    |
-| `output_dir` | any path                                | `dist`  |
+Copy this into `.github/workflows/git-invader.yml` in your profile repo:
 
-Leave `color` or `mode` blank to generate all variants at once. 
-*Note: Dark and Light modes use distinct hex color palettes to ensure perfect readability and contrast.*
+```yaml
+name: git-invaders
+
+on:
+    schedule:
+        - cron: "0 */12 * * *" # refresh every 12 hours
+    workflow_dispatch: # allow manual trigger
+    push:
+        branches: [main, master]
+
+jobs:
+    generate:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Generate SVG
+              uses: YOUR_USERNAME/git-invader@main
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  github_username: ${{ github.repository_owner }}
+                  color: multi # green | blue | orange | pink | yellow | multi | (blank = all)
+                  mode: dark # dark | light | (blank = both)
+
+            - name: Push to output branch
+              uses: crazy-max/ghaction-github-pages@v4
+              with:
+                  target_branch: output
+                  build_dir: dist
+                  keep_history: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+> Replace `YOUR_USERNAME` with your actual GitHub username.
 
 ---
 
-## Run locally (no token needed for mock)
+## Action inputs
+
+| Input             | Required | Default  | Description                                     |
+| ----------------- | -------- | -------- | ----------------------------------------------- |
+| `github_token`    | yes      | —        | `${{ secrets.GITHUB_TOKEN }}` is sufficient     |
+| `github_username` | yes      | —        | The username whose contributions to render      |
+| `color`           | no       | _(all)_  | `green` `blue` `orange` `pink` `yellow` `multi` |
+| `mode`            | no       | _(both)_ | `dark` `light`                                  |
+| `output_dir`      | no       | `dist`   | Directory to write SVG files into               |
+
+---
+
+## Run locally
+
+No token needed for mock data:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/git-invader
 cd git-invader
 bun install
-bun src/test-mock.ts          # generates dist/ from fake data — no token needed
+bun src/test-mock.ts
+# writes all 12 SVGs (6 colors × 2 modes) to dist/
 ```
 
-With real data:
+With real GitHub data:
 
 ```bash
 bun src/index.ts --token YOUR_GITHUB_PAT --username YOUR_USERNAME
@@ -113,26 +201,19 @@ bun src/index.ts --token YOUR_GITHUB_PAT --username YOUR_USERNAME
 
 ---
 
-## How others can use it
-
-Once your `git-invader` repo is public, anyone can use it by adding
-`uses: YOUR_USERNAME/git-invader@main` in their own workflow — no installation,
-no extra secrets. The `GITHUB_TOKEN` GitHub provides automatically is sufficient.
-
----
-
 ## Project layout
 
 ```
 src/
-  index.ts              CLI + GitHub Action entry point
-  types.ts              Shared types
-  api/github.ts         GitHub GraphQL API client
+  index.ts                 CLI + GitHub Action entry point
+  test-mock.ts             Local test with generated fake data
+  types.ts                 Shared types
+  api/
+    github.ts              GitHub GraphQL API client
   games/
-    space-invaders.ts   SVG generator
+    space-invaders.ts      SVG generator
 examples/
-  git-invader.yml       Workflow template to copy into your profile repo
-action.yml              GitHub Action definition (read by GitHub)
-Dockerfile              Container the action runs in
-
+  git-invader.yml          Workflow template to copy into your profile repo
+action.yml                 GitHub Action definition
+Dockerfile                 Container the action runs in
 ```

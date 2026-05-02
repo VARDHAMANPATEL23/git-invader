@@ -1,40 +1,41 @@
 # Copy this file to .github/workflows/git-invader.yml in your profile repo
 # (the repo named the same as your GitHub username, e.g. github.com/alice/alice)
 #
-# Then go to Actions → git-invader → Run workflow to run it the first time.
+# Replace YOUR_USERNAME below with your actual GitHub username.
+# Then go to Actions → git-invaders → Run workflow to run it the first time.
 
-name: git-invader
+name: git-invaders
 
 on:
-  schedule:
-    - cron: "0 */12 * * *"   # every 12 hours
-  workflow_dispatch:           # allow manual trigger
-  push:
-    branches: [main, master]
+    schedule:
+        - cron: "0 */12 * * *" # refresh every 12 hours
+    workflow_dispatch: # allow manual trigger
+    push:
+        branches: [main, master]
 
 jobs:
-  generate:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    generate:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
 
-    steps:
-      - uses: actions/checkout@v4
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Generate SVG
-        uses: YOUR_GITHUB_USERNAME/git-invader@main
-        with:
-          github_token:    ${{ secrets.GITHUB_TOKEN }}
-          github_username: ${{ github.repository_owner }}
-          output_dir:      dist
-          color:           green   # green | blue | orange | pink | yellow  (or leave blank for all)
-          mode:            dark    # dark | light  (or leave blank for both)
+            - name: Generate SVG
+              uses: YOUR_USERNAME/git-invader@main
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  github_username: ${{ github.repository_owner }}
+                  color: multi # green | blue | orange | pink | yellow | multi | (blank = all 6)
+                  mode: dark # dark | light | (blank = both)
+                  # output_dir:    dist   # default is dist
 
-      - name: Push to output branch
-        uses: crazy-max/ghaction-github-pages@v4
-        with:
-          target_branch: output
-          build_dir:     dist
-          keep_history:  true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Push to output branch
+              uses: crazy-max/ghaction-github-pages@v4
+              with:
+                  target_branch: output
+                  build_dir: dist
+                  keep_history: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

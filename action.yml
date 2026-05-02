@@ -14,7 +14,7 @@ inputs:
         required: false
         default: dist
     color:
-        description: "Accent color: green | blue | orange | pink | yellow  (leave blank for all)"
+        description: "Accent color: green | blue | orange | pink | yellow | multi  (leave blank for all)"
         required: false
         default: ""
     mode:
