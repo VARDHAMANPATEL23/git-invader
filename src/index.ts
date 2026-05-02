@@ -14,6 +14,7 @@ const VALID_COLORS: ThemeColor[] = [
 	"orange",
 	"pink",
 	"yellow",
+	"multi",
 ];
 const VALID_MODES: ThemeMode[] = ["dark", "light"];
 const VALID_SHIPS: ShipVariant[] = ["rocket", "saucer", "delta", "cruiser"];
@@ -77,7 +78,9 @@ function parseArgs() {
 		usage();
 	}
 	if (rawShip && !ship) {
-		console.error(`Invalid ship "${rawShip}" — choose from: ${VALID_SHIPS.join(" | ")}`);
+		console.error(
+			`Invalid ship "${rawShip}" — choose from: ${VALID_SHIPS.join(" | ")}`,
+		);
 		usage();
 	}
 	if (!token) {
@@ -116,7 +119,11 @@ async function main() {
 
 	for (const c of colors) {
 		for (const m of modes) {
-			const svg = generateSpaceInvadersSvg(data, { color: c, mode: m, ship });
+			const svg = generateSpaceInvadersSvg(data, {
+				color: c,
+				mode: m,
+				ship,
+			});
 			const name = `git-invader-${c}-${m}.svg`;
 			fs.writeFileSync(path.join(outDir, name), svg, "utf-8");
 			console.log(
