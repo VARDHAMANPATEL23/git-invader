@@ -10,6 +10,7 @@ Your contribution grid transforms into an alien armada — the ship hunts them d
 - **Smart targeting** — the ship shoots the lowest-row alien first, column by column, never firing through living units
 - **Dynamic HP** — alien health scales with your daily commit count; high-volume days take multiple hits to kill
 - **4 alien types** — squid, crab, octopus, spider; type is determined by contribution level (1–4)
+- **4 ship variants** — rocket, saucer, delta fighter, cruiser; chosen deterministically from your total commit count
 - **Multi-color mode** — each alien colored individually by commit count: blue (low) → green → yellow → red (high)
 - **Dark + light themes** — distinct palettes for both, tuned for GitHub's native contrast on each background
 - **Pure SVG/CSS** — no JavaScript, embeds directly in any GitHub README
@@ -28,6 +29,23 @@ Your contribution grid transforms into an alien armada — the ship hunts them d
 | `multi`       | Per-alien color based on commit count — blue → green → yellow → red |
 
 Leave `color` blank to generate all 6 variants. Leave `mode` blank to generate both `dark` and `light`.
+
+---
+
+## Ship variants
+
+Each generated SVG features one of 4 pixel-art shooter ships. Every ship is an 11×8 pixel bitmap (same format as the aliens).
+
+| `ship` value | Shape                                          |
+| ------------ | ---------------------------------------------- |
+| `rocket`     | Narrow nose, wide base, side exhaust nozzles   |
+| `saucer`     | Wide dome body, flat underbelly, dangling legs |
+| `delta`      | Arrowhead hull, symmetrically swept wings      |
+| `cruiser`    | Wide body, twin side pods, sensor dish on top  |
+
+**Auto-selection (default):** when `ship` is left blank the variant is chosen deterministically from your total yearly commit count (`count % 4`). Different users naturally get different ships with no config required.
+
+**Manual override:** set `ship: rocket` (or any of the four values) in your workflow to pin a specific variant.
 
 ---
 
@@ -154,6 +172,7 @@ jobs:
                   github_username: ${{ github.repository_owner }}
                   color: multi # green | blue | orange | pink | yellow | multi | (blank = all)
                   mode: dark # dark | light | (blank = both)
+                  ship: rocket # rocket | saucer | delta | cruiser | (blank = auto)
 
             - name: Push to output branch
               uses: crazy-max/ghaction-github-pages@v4
@@ -177,6 +196,7 @@ jobs:
 | `github_username` | yes      | —        | The username whose contributions to render      |
 | `color`           | no       | _(all)_  | `green` `blue` `orange` `pink` `yellow` `multi` |
 | `mode`            | no       | _(both)_ | `dark` `light`                                  |
+| `ship`            | no       | _(auto)_ | `rocket` `saucer` `delta` `cruiser` — leave blank to auto-select based on commit count |
 | `output_dir`      | no       | `dist`   | Directory to write SVG files into               |
 
 ---
@@ -211,7 +231,7 @@ src/
   api/
     github.ts              GitHub GraphQL API client
   games/
-    space-invaders.ts      SVG generator
+    space-invaders.ts      SVG generator (4 alien bitmaps + 4 ship bitmaps)
 examples/
   git-invader.yml          Workflow template to copy into your profile repo
 action.yml                 GitHub Action definition

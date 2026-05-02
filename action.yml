@@ -1,6 +1,6 @@
 name: git-invader
 description: Generate a Space Invaders SVG animation from your GitHub contribution graph
-author: rajdpatel
+author: patel-vardhman
 
 inputs:
     github_token:
@@ -19,6 +19,10 @@ inputs:
         default: ""
     mode:
         description: "Theme mode: dark | light  (leave blank for both)"
+        required: false
+        default: ""
+    ship:
+        description: "Ship variant: rocket | saucer | delta | cruiser  (leave blank to auto-select)"
         required: false
         default: ""
 

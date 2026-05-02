@@ -29,7 +29,10 @@ jobs:
                   github_username: ${{ github.repository_owner }}
                   color: multi # green | blue | orange | pink | yellow | multi | (blank = all 6)
                   mode: dark # dark | light | (blank = both)
+                  ship: rocket # rocket | saucer | delta | cruiser | (blank = auto from commit count)
                   # output_dir:    dist   # default is dist
+                  # ship variant (rocket / saucer / delta / cruiser) is chosen
+                  # automatically from total commit count — no config needed
 
             - name: Push to output branch
               uses: crazy-max/ghaction-github-pages@v4

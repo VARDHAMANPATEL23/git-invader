@@ -145,7 +145,56 @@ function commitCountColor(count: number, mode: ThemeMode): string {
 	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
-function buildDefs(accent: string): string {
+// Ship bitmaps: 11 cols × 8 rows, same encoding as alien BITMAP.
+// Row 7 always empty. Bit 10 (MSB) = col 0 (left).
+const SHIP_BITMAP: Record<number, number[]> = {
+	// Rocket — narrow nose, wide base, side nozzles
+	1: [
+		0b00000100000, // . . . . . X . . . . .
+		0b00000100000, // . . . . . X . . . . .
+		0b00001110000, // . . . . X X X . . . .
+		0b00011111000, // . . . X X X X X . . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b10001110001, // X . . . X X X . . . X
+		0b00000000000,
+	],
+	// Saucer — wide dome body, flat underbelly, dangling legs
+	2: [
+		0b00011111000, // . . . X X X X X . . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01010101010, // . X . X . X . X . X .
+		0b00101110100, // . . X . X X X . X . .
+		0b01000000010, // . X . . . . . . . X .
+		0b00000000000,
+	],
+	// Delta fighter — arrowhead hull, swept wings, twin exhausts
+	3: [
+		0b00000100000, // . . . . . X . . . . .
+		0b00001110000, // . . . . X X X . . . .
+		0b00011111000, // . . . X X X X X . . .
+		0b00111111100, // . . X X X X X X X . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b10000000001, // X . . . . . . . . . X
+		0b00000000000,
+	],
+	// Cruiser — wide body, twin side pods, sensor dish on top
+	4: [
+		0b00010101000, // . . . X . X . X . . .
+		0b00011111000, // . . . X X X X X . . .
+		0b01101110110, // . X X . X X X . X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b10011111001, // X . . X X X X X . . X
+		0b11000000011, // X X . . . . . . . X X
+		0b00000000000,
+	],
+};
+
+function buildDefs(accent: string, shipVariant: number): string {
 	let d = "<defs>\n";
 	// Hard clip for bullets — CSS transforms bypass SVG viewport overflow
 	d += `<clipPath id="bulletclip"><rect width="${W}" height="${H}"/></clipPath>\n`;
@@ -159,23 +208,34 @@ function buildDefs(accent: string): string {
 		});
 		d += `<symbol id="a${lv}" viewBox="0 0 11 8" preserveAspectRatio="xMidYMid meet">${rects}</symbol>\n`;
 	}
-	// Ship symbol: simple rocket, monochrome
-	d += `<symbol id="ship" viewBox="-6 -5 12 12">
-<rect x="-1" y="-5" width="2" height="3" fill="${accent}"/>
-<rect x="-3" y="-2" width="6" height="2" fill="${accent}"/>
-<rect x="-5" y="0"  width="10" height="3" fill="${accent}"/>
-<rect x="-6" y="3"  width="12" height="2" fill="${accent}"/>
-<rect x="-6" y="3"  width="3"  height="2" fill="${accent}" opacity=".5"/>
-<rect x="3"  y="3"  width="3"  height="2" fill="${accent}" opacity=".5"/>
-</symbol>\n`;
+	// Ship symbol: rendered from SHIP_BITMAP, variant chosen by totalCount % 4
+	let shipRects = "";
+	SHIP_BITMAP[shipVariant].forEach((row, r) => {
+		for (let c = 0; c < 11; c++) {
+			if (row & (1 << (10 - c)))
+				shipRects += `<rect x="${c}" y="${r}" width="1" height="1" fill="${accent}"/>`;
+		}
+	});
+	d += `<symbol id="ship" viewBox="0 0 11 8" preserveAspectRatio="xMidYMid meet">${shipRects}</symbol>\n`;
 	d += "</defs>\n";
 	return d;
 }
 
 // ─── Main generator ───────────────────────────────────────────────────────────
+export type ShipVariant = "rocket" | "saucer" | "delta" | "cruiser";
+
+const SHIP_VARIANT_INDEX: Record<ShipVariant, number> = {
+	rocket: 1,
+	saucer: 2,
+	delta: 3,
+	cruiser: 4,
+};
+
 export interface InvaderOptions {
 	color?: ThemeColor;
 	mode?: ThemeMode;
+	/** rocket | saucer | delta | cruiser — leave blank to auto-select */
+	ship?: ShipVariant;
 }
 
 export function generateSpaceInvadersSvg(
@@ -188,6 +248,10 @@ export function generateSpaceInvadersSvg(
 	const accent = ACCENT[accentColor][mode];
 	const bg = BG[mode];
 	const dimBg = CELL_BG[mode];
+	// Ship variant: explicit option takes priority, else derive from total commit count
+	const shipVariant = opts.ship
+		? SHIP_VARIANT_INDEX[opts.ship]
+		: (data.totalCount % 4) + 1;
 
 	const { cells, totalCount } = data;
 
@@ -483,16 +547,16 @@ export function generateSpaceInvadersSvg(
 	return [
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
 		`<rect width="${W}" height="${H}" fill="${bg}"/>`,
-		buildDefs(accent),
+		buildDefs(accent, shipVariant),
 		`<style>${allCss}</style>`,
 		hud,
 		gridBg,
 		`<g id="marchg">${cellSvg.join("")}</g>`,
 		`<g clip-path="url(#bulletclip)">${bulletSvg.join("")}</g>`,
 		ground,
-		// x="-6" shifts the use element left so the ship's visual center (symbol x=0)
-		// aligns with the group origin, matching the bullet's x position.
-		`<g id="shipg"><use href="#ship" x="-6" width="12" height="10"/></g>`,
+		// Ship use: offset x/y so the bitmap's column 5 (center) aligns with shipX.
+		// Symbol is 11×8px, scale to 14×10 to match original ship footprint.
+		`<g id="shipg"><use href="#ship" x="-7" y="-9" width="14" height="10"/></g>`,
 		scanOverlay,
 		`</svg>`,
 	].join("\n");
