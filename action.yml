@@ -22,7 +22,7 @@ inputs:
         required: false
         default: ""
     ship:
-        description: "Ship variant: rocket | saucer | delta | cruiser  (leave blank to auto-select)"
+        description: "Ship variant: rocket | saucer | delta | cruiser | viper | phantom | hornet | wraith | specter | predator | eclipse | nova  (leave blank to auto-select from commit count)"
         required: false
         default: ""
 

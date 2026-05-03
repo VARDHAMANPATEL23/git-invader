@@ -17,7 +17,20 @@ const VALID_COLORS: ThemeColor[] = [
 	"multi",
 ];
 const VALID_MODES: ThemeMode[] = ["dark", "light"];
-const VALID_SHIPS: ShipVariant[] = ["rocket", "saucer", "delta", "cruiser"];
+const VALID_SHIPS: ShipVariant[] = [
+	"rocket",
+	"saucer",
+	"delta",
+	"cruiser",
+	"viper",
+	"phantom",
+	"hornet",
+	"wraith",
+	"specter",
+	"predator",
+	"eclipse",
+	"nova",
+];
 
 function usage(): never {
 	console.error(`
@@ -123,6 +136,7 @@ async function main() {
 				color: c,
 				mode: m,
 				ship,
+				username,
 			});
 			const name = `git-invader-${c}-${m}.svg`;
 			fs.writeFileSync(path.join(outDir, name), svg, "utf-8");

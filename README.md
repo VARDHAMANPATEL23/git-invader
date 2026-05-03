@@ -17,20 +17,10 @@ Every contribution cell becomes an alien. The ship hunts them down — column by
 ### Dark theme
 
 ![multi-dark](examples/space-invaders-multi-dark.svg)
-![green-dark](examples/space-invaders-green-dark.svg)
-![blue-dark](examples/space-invaders-blue-dark.svg)
-![orange-dark](examples/space-invaders-orange-dark.svg)
-![pink-dark](examples/space-invaders-pink-dark.svg)
-![yellow-dark](examples/space-invaders-yellow-dark.svg)
 
 ### Light theme
 
 ![multi-light](examples/space-invaders-multi-light.svg)
-![green-light](examples/space-invaders-green-light.svg)
-![blue-light](examples/space-invaders-blue-light.svg)
-![orange-light](examples/space-invaders-orange-light.svg)
-![pink-light](examples/space-invaders-pink-light.svg)
-![yellow-light](examples/space-invaders-yellow-light.svg)
 
 </div>
 
@@ -39,7 +29,7 @@ Every contribution cell becomes an alien. The ship hunts them down — column by
 ## How it works
 
 1. Fetches your last 52 weeks of contributions via the GitHub GraphQL API.
-2. Maps each day to an alien — type and HP scale with your commit count.
+2. Maps each day to an alien — type derived from cell position, HP scales with commit count.
 3. Generates a self-contained SVG with CSS `@keyframes` animations (no JavaScript).
 4. Commits all SVG variants to the `output` branch of your profile repo.
 5. You embed the raw URL in your README — GitHub renders it as a live animation.
@@ -49,10 +39,10 @@ Every contribution cell becomes an alien. The ship hunts them down — column by
 ## Features
 
 - **Smart targeting** — shoots the lowest-row alien first, column by column; never fires through living units
-- **Dynamic HP** — alien health scales with daily commit count; high-volume days take multiple hits
-- **4 alien types** — squid, crab, octopus, spider; type is determined by contribution level (1–4)
-- **4 ship variants** — rocket, saucer, delta, cruiser; chosen deterministically from total commit count
-- **6 color modes** — five single-accent colors plus `multi` (per-alien gradient: blue → green → yellow → red)
+- **Dynamic HP** — alien health scales with daily commit count (max 12); high-volume days take multiple hits
+- **12 alien types** — squid through watcher; type derived from cell position so every column looks different
+- **12 ship variants** — rocket through nova; chosen deterministically from total commit count, or set explicitly
+- **6 color modes** — five single-accent colors plus `multi` (per-alien gradient across all 12 vivid hues)
 - **Dark + light themes** — distinct palettes for both, tuned for GitHub's native contrast
 - **Pure SVG/CSS** — no JS, no external dependencies; embeds directly in any GitHub README
 
@@ -60,42 +50,82 @@ Every contribution cell becomes an alien. The ship hunts them down — column by
 
 ## Alien types
 
-| Level | Commits/day | Shape   | `multi` color |
-| ----- | ----------- | ------- | ------------- |
-| 1     | 1–2         | Squid   | Blue          |
-| 2     | 3–5         | Crab    | Green         |
-| 3     | 6–9         | Octopus | Yellow        |
-| 4     | 10+         | Spider  | Red           |
+<div align="center">
 
-Level 0 (no commits) renders as empty space — the ship skips it.
+### Dark
 
----
+![aliens-dark](examples/showcase-aliens-dark.svg)
 
-## Color modes
+### Light
 
-| `color`  | Description                                                         |
-| -------- | ------------------------------------------------------------------- |
-| `green`  | Single neon green accent                                            |
-| `blue`   | Single blue accent                                                  |
-| `orange` | Single orange accent                                                |
-| `pink`   | Single pink accent                                                  |
-| `yellow` | Single yellow accent                                                |
-| `multi`  | Per-alien color based on commit count — blue → green → yellow → red |
+![aliens-light](examples/showcase-aliens-light.svg)
 
-Leave `color` blank to generate all 6 variants. Leave `mode` blank to generate both `dark` and `light`.
+</div>
+
+| #   | Name      | Description                                       |
+| --- | --------- | ------------------------------------------------- |
+| 1   | Squid     | Narrow body, twin antennae, alternating belly     |
+| 2   | Crab      | Wide claws, bumpy shoulders, splayed legs         |
+| 3   | Octopus   | Round dome, eye row, three dangling legs          |
+| 4   | Spider    | 4-point spike crown, wide shoulders, spread legs  |
+| 5   | Hornet    | Narrow waist, blade wings, stinger tail           |
+| 6   | Jellyfish | Dome cap, spotted body, trailing tendrils         |
+| 7   | Mantis    | Tall blade arms, triangular head, forked feet     |
+| 8   | Beetle    | Armored shell ridges, stubby antennae, claw feet  |
+| 9   | Ghost     | Floating oval body, hollow eyes, wispy skirt      |
+| 10  | Scorpion  | Wide pincer arms, segmented tail curl, barb tip   |
+| 11  | Moth      | Broad dusty wings, feathery antennae, fluffy body |
+| 12  | Watcher   | Cyclopean eye ring, sensor spines, hover pods     |
+
+Alien type is derived from cell position `(col * 7 + row) % 12` — every column gets a different mix with no config needed. Level 0 (no commits) renders as empty space.
 
 ---
 
 ## Ship variants
 
-| `ship`    | Shape                                          |
-| --------- | ---------------------------------------------- |
-| `rocket`  | Narrow nose, wide base, side exhaust nozzles   |
-| `saucer`  | Wide dome body, flat underbelly, dangling legs |
-| `delta`   | Arrowhead hull, symmetrically swept wings      |
-| `cruiser` | Wide body, twin side pods, sensor dish on top  |
+<div align="center">
 
-Leave `ship` blank to auto-select based on `total_commits % 4` — different users get different ships with no config required.
+### Dark
+
+![ships-dark](examples/showcase-ships-dark.svg)
+
+### Light
+
+![ships-light](examples/showcase-ships-light.svg)
+
+</div>
+
+| `ship`     | Description                                           |
+| ---------- | ----------------------------------------------------- |
+| `rocket`   | Narrow nose, wide base, side exhaust nozzles          |
+| `saucer`   | Wide dome body, flat underbelly, dangling legs        |
+| `delta`    | Arrowhead hull, symmetrically swept wings             |
+| `cruiser`  | Wide body, twin side pods, sensor dish on top         |
+| `viper`    | Arrowhead with triple engine pods and swept tail      |
+| `phantom`  | Diamond frame, hollow center window, spiked wing tips |
+| `hornet`   | Swept wings with center spine, split quad exhausts    |
+| `wraith`   | Broad oval hull, triple crown spikes, twin claw legs  |
+| `specter`  | Bat-wing silhouette with split fuselage               |
+| `predator` | Wide shoulders, claw feet, sensor dish crown          |
+| `eclipse`  | Rounded dome, swept engine skirt, notched belly       |
+| `nova`     | Star fighter with angled strakes and quad nozzles     |
+
+Leave `ship` blank to auto-select based on `total_commits % 12` — different users get different ships with no config required. In `multi` mode the ship gets its own randomly chosen vivid color distinct from the aliens.
+
+---
+
+## Color modes
+
+| `color`  | Description                                                              |
+| -------- | ------------------------------------------------------------------------ |
+| `green`  | Single neon green accent                                                 |
+| `blue`   | Single blue accent                                                       |
+| `orange` | Single orange accent                                                     |
+| `pink`   | Single pink accent                                                       |
+| `yellow` | Single yellow accent                                                     |
+| `multi`  | Per-alien color based on commit count — 12-hue gradient across all cells |
+
+Leave `color` blank to generate all 6 variants. Leave `mode` blank to generate both `dark` and `light`.
 
 ---
 
@@ -153,7 +183,7 @@ jobs:
                   github_username: ${{ github.repository_owner }}
                   color: multi # green | blue | orange | pink | yellow | multi | (blank = all 6)
                   mode: dark # dark | light | (blank = both)
-                  ship: rocket # rocket | saucer | delta | cruiser | (blank = auto from commit count)
+                  ship: rocket # rocket | saucer | delta | cruiser | viper | phantom | hornet | wraith | specter | predator | eclipse | nova | (blank = auto)
                   # output_dir:    dist   # default is dist
 
             - name: Push to output branch
@@ -209,14 +239,14 @@ https://raw.githubusercontent.com/USERNAME/USERNAME/output/git-invader-{color}-{
 
 ## Action inputs
 
-| Input             | Required | Default   | Description                                     |
-| ----------------- | -------- | --------- | ----------------------------------------------- |
-| `github_token`    | yes      | —         | `${{ secrets.GITHUB_TOKEN }}` is sufficient     |
-| `github_username` | yes      | —         | Username whose contributions to render          |
-| `color`           | no       | _(all 6)_ | `green` `blue` `orange` `pink` `yellow` `multi` |
-| `mode`            | no       | _(both)_  | `dark` `light`                                  |
-| `ship`            | no       | _(auto)_  | `rocket` `saucer` `delta` `cruiser`             |
-| `output_dir`      | no       | `dist`    | Directory to write SVG files into               |
+| Input             | Required | Default   | Description                                                                                                   |
+| ----------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------- |
+| `github_token`    | yes      | —         | `${{ secrets.GITHUB_TOKEN }}` is sufficient                                                                   |
+| `github_username` | yes      | —         | Username whose contributions to render                                                                        |
+| `color`           | no       | _(all 6)_ | `green` `blue` `orange` `pink` `yellow` `multi`                                                               |
+| `mode`            | no       | _(both)_  | `dark` `light`                                                                                                |
+| `ship`            | no       | _(auto)_  | `rocket` `saucer` `delta` `cruiser` `viper` `phantom` `hornet` `wraith` `specter` `predator` `eclipse` `nova` |
+| `output_dir`      | no       | `dist`    | Directory to write SVG files into                                                                             |
 
 ---
 
@@ -229,7 +259,7 @@ git clone https://github.com/VARDHAMANPATEL23/git-invader
 cd git-invader
 bun install
 bun src/test-mock.ts
-# writes all 12 SVGs (6 colors × 2 modes) to dist/
+# writes SVGs to dist/ — color variants, ship variants, and showcase grids
 ```
 
 **With real GitHub data:**
@@ -240,14 +270,14 @@ bun src/index.ts --token YOUR_GITHUB_PAT --username YOUR_USERNAME
 
 **CLI flags:**
 
-| Flag         | Description                                     |
-| ------------ | ----------------------------------------------- |
-| `--token`    | GitHub personal access token                    |
-| `--username` | Target GitHub username                          |
-| `--color`    | `green` `blue` `orange` `pink` `yellow` `multi` |
-| `--mode`     | `dark` `light`                                  |
-| `--ship`     | `rocket` `saucer` `delta` `cruiser`             |
-| `--out`      | Output directory (default: `dist`)              |
+| Flag         | Description                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| `--token`    | GitHub personal access token                                                                                  |
+| `--username` | Target GitHub username                                                                                        |
+| `--color`    | `green` `blue` `orange` `pink` `yellow` `multi`                                                               |
+| `--mode`     | `dark` `light`                                                                                                |
+| `--ship`     | `rocket` `saucer` `delta` `cruiser` `viper` `phantom` `hornet` `wraith` `specter` `predator` `eclipse` `nova` |
+| `--out`      | Output directory (default: `dist`)                                                                            |
 
 ---
 
@@ -257,14 +287,18 @@ bun src/index.ts --token YOUR_GITHUB_PAT --username YOUR_USERNAME
 git-invader/
 ├── src/
 │   ├── index.ts                CLI + GitHub Action entry point
-│   ├── test-mock.ts            Local test with generated fake data
+│   ├── test-mock.ts            Local test with generated fake data + showcase grids
 │   ├── types.ts                Shared types (Cell, ContribData)
 │   ├── api/
 │   │   └── github.ts           GitHub GraphQL API client
 │   └── games/
-│       └── space-invaders.ts   SVG generator (4 alien + 4 ship bitmaps)
+│       └── space-invaders.ts   SVG generator (12 alien + 12 ship bitmaps)
 ├── examples/
-│   └── git-invader.yml         Workflow template to copy into your profile repo
+│   ├── git-invader.yml         Workflow template to copy into your profile repo
+│   ├── showcase-aliens-dark.svg
+│   ├── showcase-aliens-light.svg
+│   ├── showcase-ships-dark.svg
+│   └── showcase-ships-light.svg
 ├── action.yml                  GitHub Action definition
 └── Dockerfile                  Container the action runs in
 ```
@@ -289,7 +323,7 @@ No external SVG libraries. No runtime dependencies.
 ## Constraints
 
 - **No JS in SVG.** GitHub strips `<script>` from SVGs rendered as `<img>`. All animation is CSS `@keyframes`.
-- **Self-contained.** No external font requests, no CDN `href`s. Pixel font is embedded as base64.
+- **Self-contained.** No external font requests, no CDN `href`s.
 - **Fixed 900px width.** Matches GitHub profile README max content width; scales down on smaller screens via `width="100%"`.
 - **Infinite loop.** All keyframe animations use `animation-iteration-count: infinite`.
 
