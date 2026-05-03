@@ -674,8 +674,11 @@ export function generateSpaceInvadersSvg(
 		let hfCss = "";
 		for (let i = 0; i < hitTimes.length; i++) {
 			const ht = hitTimes[i];
+			const opBefore = (maxHp - i) / maxHp; // opacity level before this hit
 			const opAfter = (maxHp - (i + 1)) / maxHp; // base opacity after this hit
 			hfCss +=
+				// Hold at current brightness until just before impact (no premature fade)
+				`${pct(ht - 0.001)}{opacity:${opBefore.toFixed(2)}}` +
 				// brief flash-dim on impact
 				`${pct(ht)}{opacity:${(opAfter * 0.3).toFixed(2)}}` +
 				// settle at new lower base
@@ -699,6 +702,8 @@ export function generateSpaceInvadersSvg(
 				`@keyframes k${id}{` +
 				`0%{opacity:1}` +
 				hfCss +
+				// Hold at full brightness until just before kill flash (prevents linear fade-in from start)
+				`${pct(ka - FLASH - 0.001)}{opacity:${opBeforeKill.toFixed(2)}}` +
 				`${pct(ka - FLASH)}{opacity:${(opBeforeKill * 0.3).toFixed(2)}}` +
 				`${pct(ka)}{opacity:0}` +
 				`100%{opacity:0}}`,

@@ -23,7 +23,7 @@ jobs:
             - uses: actions/checkout@v4
 
             - name: Generate SVG
-              uses: VARDHAMANPATEL23/git-invader@vx.x.x
+              uses: VARDHAMANPATEL23/git-invader@vx.x.x # add appropriate version number here
               with:
                   github_token: ${{ secrets.GITHUB_TOKEN }}
                   github_username: ${{ github.repository_owner }}

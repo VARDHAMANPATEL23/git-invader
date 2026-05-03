@@ -4,3 +4,4 @@ dist/
 planning.md
 Context.md
 .DS_Store
+/dist
