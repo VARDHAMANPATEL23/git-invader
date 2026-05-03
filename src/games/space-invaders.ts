@@ -47,6 +47,38 @@ const CELL_BG: Record<ThemeMode, string> = {
 	light: "#ebedf0",
 };
 
+// ─── Multi-mode ship color palette ───────────────────────────────────────────
+const MULTI_SHIP_COLORS: Record<ThemeMode, string[]> = {
+	dark: [
+		"#39d353", // green
+		"#58A6FF", // blue
+		"#F78166", // orange
+		"#FF79C6", // pink
+		"#FBBF24", // yellow
+		"#a78bfa", // violet
+		"#34d399", // teal
+		"#fb923c", // amber
+		"#e879f9", // fuchsia
+		"#22d3ee", // cyan
+		"#f43f5e", // rose
+		"#a3e635", // lime
+	],
+	light: [
+		"#216e39", // green
+		"#0969da", // blue
+		"#bc4c00", // orange
+		"#bf3989", // pink
+		"#9a6700", // yellow
+		"#7c3aed", // violet
+		"#059669", // teal
+		"#ea580c", // amber
+		"#c026d3", // fuchsia
+		"#0891b2", // cyan
+		"#be123c", // rose
+		"#65a30d", // lime
+	],
+};
+
 // ─── Health calculation ───────────────────────────────────────────────────────
 function getHealth(count: number): number {
 	if (count === 0) return 0;
@@ -54,9 +86,9 @@ function getHealth(count: number): number {
 		const h = count % 15;
 		return h === 0 ? 15 : h;
 	}
-	if (count > 10) {
-		const h = count % 10;
-		return h === 0 ? 10 : h;
+	if (count > 12) {
+		const h = count % 12;
+		return h === 0 ? 12 : h;
 	}
 	return count;
 }
@@ -65,7 +97,7 @@ function getHealth(count: number): number {
 // 11 cols × 8 rows. Bit 10 (MSB) = col 0 (left), bit 0 (LSB) = col 10 (right).
 // All designs are left-right symmetric. Row 7 always empty.
 const BITMAP: Record<number, number[]> = {
-	// Squid — narrow body, twin antennae, alternating belly
+	// 1: Squid — narrow body, twin antennae, alternating belly
 	1: [
 		0b00100000100, // . . X . . . . . X . .
 		0b00010001000, // . . . X . . . X . . .
@@ -76,7 +108,7 @@ const BITMAP: Record<number, number[]> = {
 		0b10001010001, // X . . . X . X . . . X
 		0b00000000000,
 	],
-	// Crab — wide claws, bumpy shoulders, splayed legs
+	// 2: Crab — wide claws, bumpy shoulders, splayed legs
 	2: [
 		0b01000000010, // . X . . . . . . . X .
 		0b00101110100, // . . X . X X X . X . .
@@ -87,7 +119,7 @@ const BITMAP: Record<number, number[]> = {
 		0b10000000001, // X . . . . . . . . . X
 		0b00000000000,
 	],
-	// Octopus — round dome, eye row, three dangling legs
+	// 3: Octopus — round dome, eye row, three dangling legs
 	3: [
 		0b00111111100, // . . X X X X X X X . .
 		0b01111111110, // . X X X X X X X X X .
@@ -98,7 +130,7 @@ const BITMAP: Record<number, number[]> = {
 		0b01000000010, // . X . . . . . . . X .
 		0b00000000000,
 	],
-	// Spider — 4-point spike crown, wide shoulders, spread legs
+	// 4: Spider — 4-point spike crown, wide shoulders, spread legs
 	4: [
 		0b10010001001, // X . . X . . . X . . X
 		0b01001010010, // . X . . X . X . . X .
@@ -106,6 +138,94 @@ const BITMAP: Record<number, number[]> = {
 		0b11101110111, // X X X . X X X . X X X
 		0b11111111111, // X X X X X X X X X X X
 		0b10101110101, // X . X . X X X . X . X
+		0b10010001001, // X . . X . . . X . . X
+		0b00000000000,
+	],
+	// 5: Hornet — narrow waist, blade wings, stinger tail
+	5: [
+		0b00001010000, // . . . . X . X . . . .
+		0b00011111000, // . . . X X X X X . . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11110110111, // X X X X . X X . X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b00111111100, // . . X X X X X X X . .
+		0b01000000010, // . X . . . . . . . X .
+		0b00000000000,
+	],
+	// 6: Jellyfish — dome cap, spotted body, trailing tendrils
+	6: [
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b11010101011, // X X . X . X . X . X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01011101010, // . X . X X X . X . X .  (tentacle roots)
+		0b01001001010, // . X . . X . . X . X .
+		0b10000000001, // X . . . . . . . . . X
+		0b00000000000,
+	],
+	// 7: Mantis — tall blade arms, triangular head, forked feet
+	7: [
+		0b10001110001, // X . . . X X X . . . X
+		0b01001110010, // . X . . X X X . . X .
+		0b00111111100, // . . X X X X X X X . .
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b10100000101, // X . X . . . . . X . X
+		0b11000000011, // X X . . . . . . . X X
+		0b00000000000,
+	],
+	// 8: Beetle — armored shell ridges, stubby antennae, claw feet
+	8: [
+		0b00010001000, // . . . X . . . X . . .
+		0b01110001110, // . X X X . . . X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b10111111101, // X . X X X X X X X . X
+		0b11111111111, // X X X X X X X X X X X
+		0b11010101011, // X X . X . X . X . X X
+		0b00101010100, // . . X . X . X . X . .
+		0b00000000000,
+	],
+	// 9: Ghost — floating oval body, hollow eyes, wispy skirt
+	9: [
+		0b00111111100, // . . X X X X X X X . .
+		0b01100001100, // . X X . . . . X X . .  (hollow eyes)
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b10101010101, // X . X . X . X . X . X
+		0b01010101010, // . X . X . X . X . X .
+		0b00000000000,
+	],
+	// 10: Scorpion — wide pincer arms, segmented tail curl, barb tip
+	10: [
+		0b11000000011, // X X . . . . . . . X X
+		0b11011111011, // X X . X X X X X . X X
+		0b01111111110, // . X X X X X X X X X .
+		0b00111111100, // . . X X X X X X X . .
+		0b11111111111, // X X X X X X X X X X X
+		0b10111111101, // X . X X X X X X X . X
+		0b00010101000, // . . . X . X . X . . .
+		0b00000000000,
+	],
+	// 11: Moth — broad dusty wings, feathery antennae, fluffy body
+	11: [
+		0b10001010001, // X . . . X . X . . . X
+		0b11011111011, // X X . X X X X X . X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b10010110001, // X . . X . X X . . . X
+		0b11000000011, // X X . . . . . . . X X
+		0b00000000000,
+	],
+	// 12: Watcher — cyclopean eye ring, sensor spines, hover pods
+	12: [
+		0b01001010010, // . X . . X . X . . X .
+		0b10110101101, // X . X X . X . X X . X
+		0b01111111110, // . X X X X X X X X X .
+		0b11100000111, // X X X . . . . . X X X  (hollow eye)
+		0b11111111111, // X X X X X X X X X X X
+		0b01101110110, // . X X . X X X . X X .
 		0b10010001001, // X . . X . . . X . . X
 		0b00000000000,
 	],
@@ -192,13 +312,105 @@ const SHIP_BITMAP: Record<number, number[]> = {
 		0b11000000011, // X X . . . . . . . X X
 		0b00000000000,
 	],
+	// Viper — arrowhead with triple engine pods and swept tail
+	5: [
+		0b00000100000, // . . . . . X . . . . .
+		0b00001110000, // . . . . X X X . . . .
+		0b00011111000, // . . . X X X X X . . .
+		0b00111111100, // . . X X X X X X X . .
+		0b11111111111, // X X X X X X X X X X X
+		0b11100111011, // X X X . . X X X . X X
+		0b11000000011, // X X . . . . . . . X X
+		0b00000000000,
+	],
+	// Phantom — diamond frame, hollow center window, spiked wing tips
+	6: [
+		0b10000100001, // X . . . . X . . . . X
+		0b01001110010, // . X . . X X X . . X .
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01111111110, // . X X X X X X X X X .
+		0b10000100001, // X . . . . X . . . . X
+		0b00000000000,
+	],
+	// Hornet — swept wings with center spine, split quad exhausts
+	7: [
+		0b00000100000, // . . . . . X . . . . .
+		0b00001110000, // . . . . X X X . . . .
+		0b11110111111, // X X X X . X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01110111011, // . X X X . X X X . X X
+		0b10000000001, // X . . . . . . . . . X
+		0b00000000000,
+	],
+	// Wraith — broad oval hull, triple crown spikes, twin claw legs
+	8: [
+		0b00100010100, // . . X . . . X . X . .
+		0b00111111100, // . . X X X X X X X . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b01111111110, // . X X X X X X X X X .
+		0b11001110011, // X X . . X X X . . X X
+		0b00000000000,
+	],
+	// Specter — bat-wing silhouette with split fuselage
+	9: [
+		0b00000100000, // . . . . . X . . . . .
+		0b00011111000, // . . . X X X X X . . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11110011111, // X X X X . . X X X X X
+		0b11110011111, // X X X X . . X X X X X
+		0b01111111110, // . X X X X X X X X X .
+		0b11100000111, // X X X . . . . . X X X
+		0b00000000000,
+	],
+	// Predator — wide shoulders, claw feet, sensor dish crown
+	10: [
+		0b11000000011, // X X . . . . . . . X X
+		0b01000100010, // . X . . . X . . . X .
+		0b11101110111, // X X X . X X X . X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11100000111, // X X X . . . . . X X X
+		0b10000100001, // X . . . . X . . . . X
+		0b00000000000,
+	],
+	// Eclipse — rounded dome, swept engine skirt, notched belly
+	11: [
+		0b00011111000, // . . . X X X X X . . .
+		0b00111111100, // . . X X X X X X X . .
+		0b01111111110, // . X X X X X X X X X .
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11001010011, // X X . . X . X . . X X
+		0b11010001011, // X X . X . . . X . X X
+		0b00000000000,
+	],
+	// Nova — star fighter with angled strakes and quad nozzles
+	12: [
+		0b00000100000, // . . . . . X . . . . .
+		0b00001110000, // . . . . X X X . . . .
+		0b11001110011, // X X . . X X X . . X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11111111111, // X X X X X X X X X X X
+		0b11001110011, // X X . . X X X . . X X
+		0b01001010010, // . X . . X . X . . X .
+		0b00000000000,
+	],
 };
 
-function buildDefs(accent: string, shipVariant: number): string {
+function buildDefs(
+	accent: string,
+	shipAccent: string,
+	shipVariant: number,
+): string {
 	let d = "<defs>\n";
 	// Hard clip for bullets — CSS transforms bypass SVG viewport overflow
 	d += `<clipPath id="bulletclip"><rect width="${W}" height="${H}"/></clipPath>\n`;
-	for (const lv of [1, 2, 3, 4]) {
+	for (const lv of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
 		let rects = "";
 		BITMAP[lv].forEach((row, r) => {
 			for (let c = 0; c < 11; c++) {
@@ -208,12 +420,12 @@ function buildDefs(accent: string, shipVariant: number): string {
 		});
 		d += `<symbol id="a${lv}" viewBox="0 0 11 8" preserveAspectRatio="xMidYMid meet">${rects}</symbol>\n`;
 	}
-	// Ship symbol: rendered from SHIP_BITMAP, variant chosen by totalCount % 4
+	// Ship symbol rendered from SHIP_BITMAP with its own accent color
 	let shipRects = "";
 	SHIP_BITMAP[shipVariant].forEach((row, r) => {
 		for (let c = 0; c < 11; c++) {
 			if (row & (1 << (10 - c)))
-				shipRects += `<rect x="${c}" y="${r}" width="1" height="1" fill="${accent}"/>`;
+				shipRects += `<rect x="${c}" y="${r}" width="1" height="1" fill="${shipAccent}"/>`;
 		}
 	});
 	d += `<symbol id="ship" viewBox="0 0 11 8" preserveAspectRatio="xMidYMid meet">${shipRects}</symbol>\n`;
@@ -222,20 +434,42 @@ function buildDefs(accent: string, shipVariant: number): string {
 }
 
 // ─── Main generator ───────────────────────────────────────────────────────────
-export type ShipVariant = "rocket" | "saucer" | "delta" | "cruiser";
+export type ShipVariant =
+	| "rocket"
+	| "saucer"
+	| "delta"
+	| "cruiser"
+	| "viper"
+	| "phantom"
+	| "hornet"
+	| "wraith"
+	| "specter"
+	| "predator"
+	| "eclipse"
+	| "nova";
 
 const SHIP_VARIANT_INDEX: Record<ShipVariant, number> = {
 	rocket: 1,
 	saucer: 2,
 	delta: 3,
 	cruiser: 4,
+	viper: 5,
+	phantom: 6,
+	hornet: 7,
+	wraith: 8,
+	specter: 9,
+	predator: 10,
+	eclipse: 11,
+	nova: 12,
 };
 
 export interface InvaderOptions {
 	color?: ThemeColor;
 	mode?: ThemeMode;
-	/** rocket | saucer | delta | cruiser — leave blank to auto-select */
+	/** rocket | saucer | delta | cruiser | viper | phantom | hornet | wraith | specter | predator | eclipse | nova */
 	ship?: ShipVariant;
+	/** GitHub username shown in the centre of the HUD */
+	username?: string;
 }
 
 export function generateSpaceInvadersSvg(
@@ -248,10 +482,20 @@ export function generateSpaceInvadersSvg(
 	const accent = ACCENT[accentColor][mode];
 	const bg = BG[mode];
 	const dimBg = CELL_BG[mode];
-	// Ship variant: explicit option takes priority, else derive from total commit count
+	// Ship variant: explicit option takes priority, else rotate across all 12 designs
 	const shipVariant = opts.ship
 		? SHIP_VARIANT_INDEX[opts.ship]
-		: (data.totalCount % 4) + 1;
+		: (data.totalCount % 12) + 1;
+
+	// Ship accent color:
+	//   - specific color mode  → same accent as the aliens
+	//   - multi mode           → random vivid color picked fresh on every render
+	const shipAccent =
+		color === "multi"
+			? MULTI_SHIP_COLORS[mode][
+					Math.floor(Math.random() * MULTI_SHIP_COLORS[mode].length)
+				]
+			: accent;
 
 	const { cells, totalCount } = data;
 
@@ -444,7 +688,7 @@ export function generateSpaceInvadersSvg(
 		cellSvg.push(
 			`<g id="${id}" color="${alienColor}">` +
 				`<rect x="${cx}" y="${cy}" width="${CELL}" height="${CELL}" fill="${alienColor}" opacity="${fillOpacity}" rx="1"/>` +
-				`<use href="#a${c.level}" x="${cx}" y="${cy}" width="${CELL}" height="${CELL}"/>` +
+				`<use href="#a${((c.x * 7 + c.y) % 12) + 1}" x="${cx}" y="${cy}" width="${CELL}" height="${CELL}"/>` +
 				`</g>`,
 		);
 
@@ -530,8 +774,12 @@ export function generateSpaceInvadersSvg(
 	// HUD
 	const hudAttr = `font-size="8" font-family="monospace" font-weight="bold" letter-spacing="1"`;
 	const commits = totalCount.toString();
+	const centerText = opts.username ? `@${opts.username.toUpperCase()}` : "";
 	const hud =
-		`<text x="${W / 2}" y="20" fill="${accent}" ${hudAttr} text-anchor="middle">GIT-INVADERS</text>` +
+		`<text x="${PAD_X}" y="20" fill="${accent}" ${hudAttr} text-anchor="start">GIT-INVADERS</text>` +
+		(centerText
+			? `<text x="${W / 2}" y="20" fill="${accent}" ${hudAttr} text-anchor="middle">${centerText}</text>`
+			: "") +
 		`<text x="${W - PAD_X}" y="20" fill="${accent}" ${hudAttr} text-anchor="end">COMMITS: ${commits}</text>`;
 
 	// Ground line
@@ -547,7 +795,7 @@ export function generateSpaceInvadersSvg(
 	return [
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
 		`<rect width="${W}" height="${H}" fill="${bg}"/>`,
-		buildDefs(accent, shipVariant),
+		buildDefs(accent, shipAccent, shipVariant),
 		`<style>${allCss}</style>`,
 		hud,
 		gridBg,
