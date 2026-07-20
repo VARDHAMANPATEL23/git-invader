@@ -37,64 +37,61 @@ export async function fetchContributions(
 
 	const html = await res.text();
 
-	// Parse <td data-date="..." data-level="..."> or <rect ... data-date="..." data-count="..." fill="...">
+	// Build a map from td id -> actual contribution count via tooltip text.
+	// Tooltip format: <label for="contribution-day-component-0-3" ...>4 contributions on ...</label>
+	// or "No contributions on ..."
+	const countById = new Map<string, number>();
+	const tooltipRegex =
+		/for="(contribution-day-component-[\d-]+)"[^>]*>(\d+) contributions/g;
+	let m: RegExpExecArray | null;
+	while ((m = tooltipRegex.exec(html)) !== null) {
+		countById.set(m[1], parseInt(m[2], 10));
+	}
+
+	// Match entire <td ...> tags that are contribution day cells (order-independent attribute parsing)
+	const tdTagRegex =
+		/<td\s[^>]*class="[^"]*ContributionCalendar-day[^"]*"[^>]*>/g;
+	const attrRegex = /([\w-]+)="([^"]*)"/g;
+
 	const cells: Cell[] = [];
 	let totalCount = 0;
 
-	// GitHub renders contribution cells as <td> with data-date and data-level
-	const tdRegex =
-		/<td[^>]+data-date="(\d{4}-\d{2}-\d{2})"[^>]+data-level="(\d)"[^>]*>/g;
-	let match: RegExpExecArray | null;
-	let weekIdx = -1;
-	let prevWeek = "";
+	while ((m = tdTagRegex.exec(html)) !== null) {
+		const tag = m[0];
+		const attrs: Record<string, string> = {};
+		let a: RegExpExecArray | null;
+		attrRegex.lastIndex = 0;
+		while ((a = attrRegex.exec(tag)) !== null) attrs[a[1]] = a[2];
 
-	while ((match = tdRegex.exec(html)) !== null) {
-		const date = match[1];
-		const level = parseInt(match[2], 10) as 0 | 1 | 2 | 3 | 4;
-		const week = date.slice(0, 7); // YYYY-MM
-		if (week !== prevWeek) {
-			weekIdx++;
-			prevWeek = week;
-		}
+		const id = attrs["id"];
+		const date = attrs["data-date"];
+		const level = parseInt(attrs["data-level"] ?? "0", 10) as
+			| 0
+			| 1
+			| 2
+			| 3
+			| 4;
+		const colIdx = parseInt(attrs["data-ix"] ?? "0", 10);
+		if (!id || !date) continue;
+
+		const count = countById.get(id) ?? (level > 0 ? level : 0);
 		const dayOfWeek = new Date(date + "T00:00:00Z").getUTCDay();
+
 		cells.push({
-			x: weekIdx,
+			x: colIdx,
 			y: dayOfWeek,
 			level,
-			count: level,
+			count,
 			date,
 			color: "",
 		});
-	}
 
-	// If <td> parsing yielded nothing, fall back to <rect> (older GitHub markup)
-	if (cells.length === 0) {
-		const rectRegex =
-			/<rect[^>]+data-date="(\d{4}-\d{2}-\d{2})"[^>]+data-count="(\d+)"[^>]+fill="(#[0-9a-fA-F]+)"[^>]*>/g;
-		weekIdx = -1;
-		prevWeek = "";
-		while ((match = rectRegex.exec(html)) !== null) {
-			const date = match[1];
-			const count = parseInt(match[2], 10);
-			const color = match[3];
-			const week = date.slice(0, 7);
-			if (week !== prevWeek) {
-				weekIdx++;
-				prevWeek = week;
-			}
-			const dayOfWeek = new Date(date + "T00:00:00Z").getUTCDay();
-			const level = count === 0 ? 0 : colorToLevel(color);
-			cells.push({ x: weekIdx, y: dayOfWeek, level, count, date, color });
-			totalCount += count;
-		}
-	} else {
-		// count is approximated from level for <td> path; sum levels as proxy
-		totalCount = cells.reduce((s, c) => s + c.count, 0);
+		totalCount += count;
 	}
 
 	if (cells.length === 0) {
 		throw new Error(
-			`Could not parse contribution data for "${username}". The GitHub HTML structure may have changed.`,
+			`Could not parse contribution data for "${username}". GitHub HTML structure may have changed.`,
 		);
 	}
 
