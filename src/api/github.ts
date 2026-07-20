@@ -1,95 +1,102 @@
 import { Cell, ContribData } from "../types";
 
-// Maps GitHub's contribution color strings to levels 0–4
 const COLOR_TO_LEVEL: Record<string, 0 | 1 | 2 | 3 | 4> = {
-  "#ebedf0": 0,
-  "#9be9a8": 1,
-  "#40c463": 2,
-  "#30a14e": 3,
-  "#216e39": 4,
-  // dark theme variants
-  "#161b22": 0,
-  "#0e4429": 1,
-  "#006d32": 2,
-  "#26a641": 3,
-  "#39d353": 4,
+	"#ebedf0": 0,
+	"#9be9a8": 1,
+	"#40c463": 2,
+	"#30a14e": 3,
+	"#216e39": 4,
+	"#161b22": 0,
+	"#0e4429": 1,
+	"#006d32": 2,
+	"#26a641": 3,
+	"#39d353": 4,
 };
 
 function colorToLevel(hex: string): 0 | 1 | 2 | 3 | 4 {
-  return COLOR_TO_LEVEL[hex.toLowerCase()] ?? (hex === "#ebedf0" || hex === "#161b22" ? 0 : 1);
+	return (
+		COLOR_TO_LEVEL[hex.toLowerCase()] ??
+		(hex === "#ebedf0" || hex === "#161b22" ? 0 : 1)
+	);
 }
 
-/**
- * Fetches contribution data by scraping the GitHub contributions endpoint.
- * Same approach as Platane/snk — parses the SVG rect elements from the page.
- */
 export async function fetchContributions(
-  username: string,
-  token: string
+	username: string,
+	_token: string,
 ): Promise<ContribData> {
-  // Use GraphQL API — more reliable than HTML scraping
-  const query = `
-    query($username: String!) {
-      user(login: $username) {
-        contributionsCollection {
-          contributionCalendar {
-            totalContributions
-            weeks {
-              contributionDays {
-                contributionCount
-                date
-                color
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
+	const url = `https://github.com/users/${username}/contributions`;
+	const res = await fetch(url, {
+		headers: { "X-Requested-With": "XMLHttpRequest" },
+	});
 
-  const res = await fetch("https://api.github.com/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: `bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query, variables: { username } }),
-  });
+	if (!res.ok) {
+		throw new Error(
+			`GitHub contributions fetch error: ${res.status} ${res.statusText}`,
+		);
+	}
 
-  if (!res.ok) {
-    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
-  }
+	const html = await res.text();
 
-  const json = (await res.json()) as any;
+	// Parse <td data-date="..." data-level="..."> or <rect ... data-date="..." data-count="..." fill="...">
+	const cells: Cell[] = [];
+	let totalCount = 0;
 
-  if (json.errors) {
-    throw new Error(`GraphQL error: ${JSON.stringify(json.errors)}`);
-  }
+	// GitHub renders contribution cells as <td> with data-date and data-level
+	const tdRegex =
+		/<td[^>]+data-date="(\d{4}-\d{2}-\d{2})"[^>]+data-level="(\d)"[^>]*>/g;
+	let match: RegExpExecArray | null;
+	let weekIdx = -1;
+	let prevWeek = "";
 
-  const calendar = json.data.user.contributionsCollection.contributionCalendar;
-  const totalCount: number = calendar.totalContributions;
+	while ((match = tdRegex.exec(html)) !== null) {
+		const date = match[1];
+		const level = parseInt(match[2], 10) as 0 | 1 | 2 | 3 | 4;
+		const week = date.slice(0, 7); // YYYY-MM
+		if (week !== prevWeek) {
+			weekIdx++;
+			prevWeek = week;
+		}
+		const dayOfWeek = new Date(date + "T00:00:00Z").getUTCDay();
+		cells.push({
+			x: weekIdx,
+			y: dayOfWeek,
+			level,
+			count: level,
+			date,
+			color: "",
+		});
+	}
 
-  const cells: Cell[] = [];
+	// If <td> parsing yielded nothing, fall back to <rect> (older GitHub markup)
+	if (cells.length === 0) {
+		const rectRegex =
+			/<rect[^>]+data-date="(\d{4}-\d{2}-\d{2})"[^>]+data-count="(\d+)"[^>]+fill="(#[0-9a-fA-F]+)"[^>]*>/g;
+		weekIdx = -1;
+		prevWeek = "";
+		while ((match = rectRegex.exec(html)) !== null) {
+			const date = match[1];
+			const count = parseInt(match[2], 10);
+			const color = match[3];
+			const week = date.slice(0, 7);
+			if (week !== prevWeek) {
+				weekIdx++;
+				prevWeek = week;
+			}
+			const dayOfWeek = new Date(date + "T00:00:00Z").getUTCDay();
+			const level = count === 0 ? 0 : colorToLevel(color);
+			cells.push({ x: weekIdx, y: dayOfWeek, level, count, date, color });
+			totalCount += count;
+		}
+	} else {
+		// count is approximated from level for <td> path; sum levels as proxy
+		totalCount = cells.reduce((s, c) => s + c.count, 0);
+	}
 
-  calendar.weeks.forEach((week: any, weekIdx: number) => {
-    week.contributionDays.forEach((day: any) => {
-      const date: string = day.date;
-      const count: number = day.contributionCount;
-      const color: string = day.color;
+	if (cells.length === 0) {
+		throw new Error(
+			`Could not parse contribution data for "${username}". The GitHub HTML structure may have changed.`,
+		);
+	}
 
-      // Day of week from date string (0 = Sunday)
-      const dayOfWeek = new Date(date + "T00:00:00Z").getUTCDay();
-
-      cells.push({
-        x: weekIdx,
-        y: dayOfWeek,
-        level: count === 0 ? 0 : colorToLevel(color),
-        count,
-        date,
-        color,
-      });
-    });
-  });
-
-  return { cells, totalCount };
+	return { cells, totalCount };
 }
